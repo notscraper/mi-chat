@@ -3,53 +3,110 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat por URL</title>
+  <title>Chat Multimedia</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-    body { background: #f0f2f5; height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .chat-container { width: 100%; max-width: 450px; height: 85vh; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
-    .header { background: #075e54; color: #fff; padding: 15px; text-align: center; font-weight: bold; }
-    .room-info { background: #128c7e; color: #e0f2f1; padding: 6px 15px; font-size: 0.85rem; text-align: center; }
-    .messages-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #e5ddd5; }
-    .message { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 0.95rem; background: #fff; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
-    .message.mine { background: #dcf8c6; align-self: flex-end; }
-    .message .meta { font-size: 0.7rem; color: #777; font-weight: bold; }
-    .message .time { font-size: 0.65rem; color: #999; text-align: right; margin-top: 4px; }
-    .input-area { padding: 10px; background: #f0f0f0; display: flex; gap: 8px; }
-    .input-area input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
-    .input-area button { background: #128c7e; color: #fff; border: none; padding: 10px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+    :root {
+      --bg-primary: #0f172a;
+      --bg-card: #1e293b;
+      --bg-chat: #090d16;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --msg-mine: #1e40af;
+      --msg-other: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg-primary); color: var(--text-main); height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .chat-container { width: 100%; max-width: 500px; height: 92vh; background: var(--bg-card); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #334155; }
+    
+    .header { background: var(--bg-card); padding: 16px; text-align: center; border-bottom: 1px solid #334155; }
+    .header h2 { font-size: 1.1rem; color: var(--text-main); }
+    .room-info { font-size: 0.8rem; color: var(--accent); margin-top: 4px; font-weight: 600; }
+    .typing-indicator { font-size: 0.75rem; color: var(--text-muted); height: 16px; margin-top: 2px; }
+
+    .messages-box { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: var(--bg-chat); }
+    .message { max-width: 80%; padding: 10px 14px; border-radius: 14px; font-size: 0.95rem; background: var(--msg-other); align-self: flex-start; word-wrap: break-word; }
+    .message.mine { background: var(--msg-mine); align-self: flex-end; }
+    .message .meta { font-size: 0.7rem; color: #cbd5e1; font-weight: bold; margin-bottom: 4px; }
+    .message .time { font-size: 0.65rem; color: var(--text-muted); text-align: right; margin-top: 4px; }
+    .message img { max-width: 100%; border-radius: 8px; margin-top: 6px; }
+    .message audio { max-width: 100%; margin-top: 6px; }
+
+    .input-area { padding: 12px; background: var(--bg-card); display: flex; gap: 8px; align-items: center; border-top: 1px solid #334155; }
+    .input-area input[type="text"] { flex: 1; padding: 10px 14px; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 20px; outline: none; font-size: 0.9rem; }
+    .input-area input[type="text"]::placeholder { color: var(--text-muted); }
+    
+    .btn-icon { background: #334155; color: #fff; border: none; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; font-size: 1.1rem; }
+    .btn-icon:hover { background: var(--accent); }
+    .btn-send { background: var(--accent); color: #fff; border: none; padding: 0 16px; height: 38px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+    .btn-send:hover { background: var(--accent-hover); }
+    .btn-rec.recording { background: #ef4444; animation: pulse 1s infinite; }
+
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
   </style>
 </head>
 <body>
 
 <div class="chat-container">
-  <div class="header">Chat en Vivo</div>
-  <div class="room-info" id="roomLabel">Conectando...</div>
+  <div class="header">
+    <h2>💬 Chat Privado</h2>
+    <div class="room-info" id="roomLabel">Conectando...</div>
+    <div class="typing-indicator" id="typingLabel"></div>
+  </div>
+
   <div class="messages-box" id="messagesBox"></div>
+
   <div class="input-area">
-    <input type="text" id="username" placeholder="Tu nombre" style="max-width: 90px;">
-    <input type="text" id="messageInput" placeholder="Mensaje..." autocomplete="off">
-    <button id="sendBtn">Enviar</button>
+    <input type="text" id="username" placeholder="Tu apodo" style="max-width: 90px;">
+    
+    <!-- Botón para adjuntar imagen -->
+    <label class="btn-icon" title="Enviar Imagen">
+      📷
+      <input type="file" id="imageInput" accept="image/*" style="display:none;">
+    </label>
+
+    <!-- Botón de Grabadora de Audio -->
+    <button class="btn-icon btn-rec" id="recBtn" title="Manejar Audio">🎤</button>
+
+    <input type="text" id="messageInput" placeholder="Escribe algo..." autocomplete="off">
+    <button class="btn-send" id="sendBtn">Enviar</button>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
+
+  // Gestión de Sala
   let room = window.location.hash.substring(1);
   if (!room) {
     room = "sala-principal";
     window.location.hash = room;
   }
-
-  document.getElementById('roomLabel').textContent = `Sala actual: #${room}`;
+  document.getElementById('roomLabel').textContent = `#${room}`;
   socket.emit('joinRoom', room);
 
+  // Elementos HTML
   const messagesBox = document.getElementById('messagesBox');
   const messageInput = document.getElementById('messageInput');
   const usernameInput = document.getElementById('username');
   const sendBtn = document.getElementById('sendBtn');
+  const imageInput = document.getElementById('imageInput');
+  const recBtn = document.getElementById('recBtn');
+  const typingLabel = document.getElementById('typingLabel');
 
+  // Sonido de notificación
+  const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+
+  // Cargar historial pasados
+  socket.on('loadHistory', (history) => {
+    messagesBox.innerHTML = '';
+    history.forEach(data => renderMessage(data, false));
+  });
+
+  // Función para enviar mensaje de texto
   function sendMessage() {
     const text = messageInput.value.trim();
     const user = usernameInput.value.trim() || 'Anónimo';
@@ -61,22 +118,94 @@
   }
 
   sendBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+  messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+    socket.emit('typing', { room, user: usernameInput.value.trim() || 'Anónimo' });
+  });
 
-  socket.on('newMessage', (data) => {
-    const isMine = data.user === (usernameInput.value.trim() || 'Anónimo');
+  // Enviar Imágenes
+  imageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const user = usernameInput.value.trim() || 'Anónimo';
+        socket.emit('sendMessage', { room, user, file: evt.target.result, fileType: 'image' });
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Grabar Audio
+  let mediaRecorder;
+  let audioChunks = [];
+  let isRecording = false;
+
+  recBtn.addEventListener('click', async () => {
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const user = usernameInput.value.trim() || 'Anónimo';
+            socket.emit('sendMessage', { room, user, file: evt.target.result, fileType: 'audio' });
+          };
+          reader.readAsDataURL(audioBlob);
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        recBtn.classList.add('recording');
+      } catch (err) {
+        alert('Se necesita permiso para usar el micrófono.');
+      }
+    } else {
+      mediaRecorder.stop();
+      isRecording = false;
+      recBtn.classList.remove('recording');
+    }
+  });
+
+  // Mostrar mensaje en pantalla
+  function renderMessage(data, playSound = true) {
+    const myName = usernameInput.value.trim() || 'Anónimo';
+    const isMine = data.user === myName;
+
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message');
     if (isMine) msgDiv.classList.add('mine');
 
-    msgDiv.innerHTML = `
-      <div class="meta">${data.user}</div>
-      <div class="text">${data.message}</div>
-      <div class="time">${data.time}</div>
-    `;
+    let contentHtml = `<div class="meta">${data.user}</div>`;
+    
+    if (data.message) contentHtml += `<div class="text">${data.message}</div>`;
+    if (data.fileType === 'image') contentHtml += `<img src="${data.file}" alt="Imagen">`;
+    if (data.fileType === 'audio') contentHtml += `<audio src="${data.file}" controls></audio>`;
+    
+    contentHtml += `<div class="time">${data.time}</div>`;
+    msgDiv.innerHTML = contentHtml;
 
     messagesBox.appendChild(msgDiv);
     messagesBox.scrollTop = messagesBox.scrollHeight;
+
+    if (playSound && !isMine) {
+      notifySound.play().catch(() => {});
+    }
+  }
+
+  socket.on('newMessage', (data) => renderMessage(data, true));
+
+  // Indicador de escribiendo
+  let typingTimeout;
+  socket.on('userTyping', (user) => {
+    typingLabel.textContent = `${user} está escribiendo...`;
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => { typingLabel.textContent = ''; }, 2000);
   });
 </script>
 </body>
