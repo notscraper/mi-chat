@@ -68,7 +68,7 @@
     </label>
 
     <!-- Botón de Grabadora de Audio -->
-    <button class="btn-icon btn-rec" id="recBtn" title="Manejar Audio">🎤</button>
+    <button class="btn-icon btn-rec" id="recBtn" title="Grabar Audio">🎤</button>
 
     <input type="text" id="messageInput" placeholder="Escribe algo..." autocomplete="off">
     <button class="btn-send" id="sendBtn">Enviar</button>
@@ -78,6 +78,11 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
+
+  // Pedir permiso para notificaciones emergentes al abrir
+  if ("Notification" in window && Notification.permission !== "denied") {
+    Notification.requestPermission();
+  }
 
   // Gestión de Sala
   let room = window.location.hash.substring(1);
@@ -100,13 +105,13 @@
   // Sonido de notificación
   const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-  // Cargar historial pasados
+  // Cargar historial pasado
   socket.on('loadHistory', (history) => {
     messagesBox.innerHTML = '';
     history.forEach(data => renderMessage(data, false));
   });
 
-  // Función para enviar mensaje de texto
+  // Enviar mensaje de texto
   function sendMessage() {
     const text = messageInput.value.trim();
     const user = usernameInput.value.trim() || 'Anónimo';
@@ -172,8 +177,20 @@
     }
   });
 
-  // Mostrar mensaje en pantalla
-  function renderMessage(data, playSound = true) {
+  // Función para notificaciones flotantes (pantalla)
+  function showPushNotification(user, message) {
+    if ("Notification" in window && Notification.permission === "granted") {
+      if (document.hidden) {
+        new Notification(`Nuevo mensaje de ${user}`, {
+          body: message || "Te ha enviado un archivo multimedia",
+          icon: "https://cdn-icons-png.flaticon.com/512/134/134937.png"
+        });
+      }
+    }
+  }
+
+  // Renderizar mensajes
+  function renderMessage(data, playAlerts = true) {
     const myName = usernameInput.value.trim() || 'Anónimo';
     const isMine = data.user === myName;
 
@@ -193,14 +210,16 @@
     messagesBox.appendChild(msgDiv);
     messagesBox.scrollTop = messagesBox.scrollHeight;
 
-    if (playSound && !isMine) {
+    // Sonido y Notificación flotante si el mensaje es de otra persona
+    if (playAlerts && !isMine) {
       notifySound.play().catch(() => {});
+      showPushNotification(data.user, data.message);
     }
   }
 
   socket.on('newMessage', (data) => renderMessage(data, true));
 
-  // Indicador de escribiendo
+  // Indicador de "Escribiendo..."
   let typingTimeout;
   socket.on('userTyping', (user) => {
     typingLabel.textContent = `${user} está escribiendo...`;
