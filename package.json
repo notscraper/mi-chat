@@ -1,13 +1,92 @@
-{
-  "name": "chat-en-tiempo-real",
-  "version": "2.0.0",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.6.1",
-    "sqlite3": "^5.1.6"
-  }
-}
+const express = require('express');
+const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http, {
+  maxHttpBufferSize: 1e7 // Límite de 10MB para imágenes y audios
+});
+const path = require('path');
+const mongoose = require('mongoose');
+
+// ⚠️ REEMPLAZA ESTA LÍNEA CON TU CADENA DE CONEXIÓN DE MONGO DB ATLAS
+const MONGO_URI = process.env.MONGO_URI ||mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/?appName=Cluster0;
+
+// Conexión a MongoDB Atlas
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
+  .catch((err) => console.error('Error al conectar con MongoDB:', err));
+
+// Esquema de la base de datos
+const messageSchema = new mongoose.Schema({
+  room: String,
+  user: String,
+  text: String,
+  file: String,
+  fileType: String,
+  time: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Message = mongoose.model('Message', messageSchema);
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+io.on('connection', (socket) => {
+  let currentRoom = '';
+
+  // Al unirse a una sala, enviar el historial persistente desde MongoDB
+  socket.on('joinRoom', async (roomId) => {
+    if (currentRoom) socket.leave(currentRoom);
+    currentRoom = roomId;
+    socket.join(roomId);
+
+    try {
+      const history = await Message.find({ room: roomId }).sort({ createdAt: 1 }).exec();
+      socket.emit('loadHistory', history);
+    } catch (err) {
+      console.error('Error al cargar historial:', err);
+    }
+  });
+
+  // Guardar y retransmitir nuevo mensaje
+  socket.on('sendMessage', async (data) => {
+    if (data.room) {
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const userStr = data.user || 'Anónimo';
+      const textStr = data.message || '';
+      const fileData = data.file || null;
+      const fileType = data.fileType || null;
+
+      try {
+        const newMsg = new Message({
+          room: data.room,
+          user: userStr,
+          text: textStr,
+          file: fileData,
+          fileType: fileType,
+          time: timeStr
+        });
+
+        await newMsg.save();
+
+        io.to(data.room).emit('newMessage', {
+          user: userStr,
+          message: textStr,
+          file: fileData,
+          fileType: fileType,
+          time: timeStr
+        });
+      } catch (err) {
+        console.error('Error al guardar mensaje:', err);
+      }
+    }
+  });
+
+  socket.on('typing', (data) => {
+    socket.to(data.room).emit('userTyping', data.user);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Servidor activo en puerto ${PORT}`);
+});
