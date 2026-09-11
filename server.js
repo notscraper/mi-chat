@@ -5,47 +5,50 @@ const io = require('socket.io')(http, {
   maxHttpBufferSize: 1e7 // Límite de 10MB para poder enviar imágenes y audios
 });
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const mongoose = require('mongoose');
 
-// Configuración de la Base de Datos SQLite
-const db = new sqlite3.Database('./chat_history.db', (err) => {
-  if (err) console.error('Error al abrir la base de datos:', err);
-  else console.log('Base de datos conectada.');
+// Cadena de conexión a MongoDB Atlas
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/chat_db?retryWrites=true&w=majority";
+
+// Conexión a la base de datos en la nube
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
+  .catch((err) => console.error('Error al conectar con MongoDB:', err));
+
+// Esquema de los mensajes en MongoDB
+const messageSchema = new mongoose.Schema({
+  room: String,
+  user: String,
+  text: String,
+  file: String,
+  fileType: String,
+  time: String,
+  createdAt: { type: Date, default: Date.now }
 });
 
-// Crear tabla para mensajes si no existe
-db.run(`CREATE TABLE IF NOT EXISTS messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  room TEXT,
-  user TEXT,
-  text TEXT,
-  file TEXT,
-  fileType TEXT,
-  time TEXT,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+const Message = mongoose.model('Message', messageSchema);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
   let currentRoom = '';
 
-  // Al unirse a una sala, enviar el historial guardado
-  socket.on('joinRoom', (roomId) => {
+  // Al unirse a una sala, enviar el historial guardado desde MongoDB
+  socket.on('joinRoom', async (roomId) => {
     if (currentRoom) socket.leave(currentRoom);
     currentRoom = roomId;
     socket.join(roomId);
 
-    // Cargar mensajes pasados de esta sala
-    db.all(`SELECT user, text, file, fileType, time FROM messages WHERE room = ? ORDER BY id ASC`, [roomId], (err, rows) => {
-      if (!err && rows) {
-        socket.emit('loadHistory', rows);
-      }
-    });
+    try {
+      const history = await Message.find({ room: roomId }).sort({ createdAt: 1 }).exec();
+      socket.emit('loadHistory', history);
+    } catch (err) {
+      console.error('Error al cargar historial:', err);
+    }
   });
 
   // Guardar y retransmitir nuevo mensaje
-  socket.on('sendMessage', (data) => {
+  socket.on('sendMessage', async (data) => {
     if (data.room) {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const userStr = data.user || 'Anónimo';
@@ -53,22 +56,29 @@ io.on('connection', (socket) => {
       const fileData = data.file || null;
       const fileType = data.fileType || null;
 
-      // Insertar mensaje en la base de datos
-      db.run(
-        `INSERT INTO messages (room, user, text, file, fileType, time) VALUES (?, ?, ?, ?, ?, ?)`,
-        [data.room, userStr, textStr, fileData, fileType, timeStr],
-        function (err) {
-          if (!err) {
-            io.to(data.room).emit('newMessage', {
-              user: userStr,
-              message: textStr,
-              file: fileData,
-              fileType: fileType,
-              time: timeStr
-            });
-          }
-        }
-      );
+      try {
+        const newMsg = new Message({
+          room: data.room,
+          user: userStr,
+          text: textStr,
+          file: fileData,
+          fileType: fileType,
+          time: timeStr
+        });
+
+        // Guardado permanente en la nube
+        await newMsg.save();
+
+        io.to(data.room).emit('newMessage', {
+          user: userStr,
+          message: textStr,
+          file: fileData,
+          fileType: fileType,
+          time: timeStr
+        });
+      } catch (err) {
+        console.error('Error al guardar mensaje:', err);
+      }
     }
   });
 
