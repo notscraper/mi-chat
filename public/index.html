@@ -217,7 +217,30 @@
     }
   }
 
-  socket.on('newMessage', (data) => renderMessage(data, true));
+  // 1. Función para notificaciones flotantes
+  function showPushNotification(user, message) {
+    if ("Notification" in window && Notification.permission === "granted") {
+      if (document.hidden) {
+        new Notification(`Nuevo mensaje de ${user}`, {
+          body: message || "Te ha enviado un archivo",
+          icon: "https://cdn-icons-png.flaticon.com/512/134/134937.png"
+        });
+      }
+    }
+  }
+
+  // 2. Escuchar mensajes nuevos y llamar a la notificación
+  socket.on('newMessage', (data) => {
+    const myName = usernameInput.value.trim() || 'Anónimo';
+    const isMine = data.user === myName;
+
+    renderMessage(data);
+
+    if (!isMine) {
+      notifySound.play().catch(() => {});
+      showPushNotification(data.user, data.message);
+    }
+  });
 
   // Indicador de "Escribiendo..."
   let typingTimeout;
