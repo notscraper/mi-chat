@@ -2,10 +2,22 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-  maxHttpBufferSize: 1e7 // Límite de 10MB para poder enviar imágenes y audios
+  maxHttpBufferSize: 1e7 // Límite de 10MB para imágenes y audios
 });
 const path = require('path');
 const mongoose = require('mongoose');
+const webpush = require('web-push');
+
+// Configuración para recibir JSON en peticiones de suscripción
+app.use(express.json());
+
+// Configuración e integración de Web Push con Claves VAPID
+const vapidKeys = webpush.generateVAPIDKeys();
+webpush.setVapidDetails(
+  'mailto:admin@chat.com',
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
 
 // Cadena de conexión a MongoDB Atlas
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/chat_db?retryWrites=true&w=majority";
@@ -26,9 +38,37 @@ const messageSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// Esquema para guardar las suscripciones de los celulares/dispositivos
+const subscriptionSchema = new mongoose.Schema({
+  endpoint: { type: String, unique: true },
+  keys: Object
+});
+
 const Message = mongoose.model('Message', messageSchema);
+const Subscription = mongoose.model('Subscription', subscriptionSchema);
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Ruta para entregar la clave pública VAPID al cliente
+app.get('/vapidPublicKey', (req, res) => {
+  res.send(vapidKeys.publicKey);
+});
+
+// Ruta para guardar la suscripción Push del dispositivo en MongoDB
+app.post('/subscribe', async (req, res) => {
+  try {
+    const subscription = req.body;
+    await Subscription.findOneAndUpdate(
+      { endpoint: subscription.endpoint },
+      subscription,
+      { upsert: true, new: true }
+    );
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error('Error al guardar suscripción Push:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 io.on('connection', (socket) => {
   let currentRoom = '';
@@ -47,7 +87,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Guardar y retransmitir nuevo mensaje
+  // Guardar y retransmitir nuevo mensaje + enviar notificación push
   socket.on('sendMessage', async (data) => {
     if (data.room) {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -69,6 +109,7 @@ io.on('connection', (socket) => {
         // Guardado permanente en la nube
         await newMsg.save();
 
+        // Emitir mensaje en tiempo real a los usuarios conectados
         io.to(data.room).emit('newMessage', {
           user: userStr,
           message: textStr,
@@ -76,8 +117,32 @@ io.on('connection', (socket) => {
           fileType: fileType,
           time: timeStr
         });
+
+        // Enviar Notificación Push en segundo plano a los dispositivos
+        const subscriptions = await Subscription.find();
+        let bodyText = textStr;
+        if (!bodyText) {
+          if (fileType === 'image') bodyText = '📷 Te envió una imagen';
+          else if (fileType === 'audio') bodyText = '🎤 Te envió un nota de voz';
+          else bodyText = 'Te envió un archivo multimedia';
+        }
+
+        const payload = JSON.stringify({
+          title: `Nuevo mensaje de ${userStr}`,
+          body: bodyText
+        });
+
+        subscriptions.forEach(sub => {
+          webpush.sendNotification(sub, payload).catch(err => {
+            // Si el dispositivo expiró o revocó el permiso, se elimina de la base de datos
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              Subscription.deleteOne({ endpoint: sub.endpoint }).exec();
+            }
+          });
+        });
+
       } catch (err) {
-        console.error('Error al guardar mensaje:', err);
+        console.error('Error al procesar mensaje:', err);
       }
     }
   });
