@@ -105,7 +105,7 @@
   // Sonido de notificación
   const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-  // Cargar historial pasado
+  // Cargar historial pasado desde MongoDB
   socket.on('loadHistory', (history) => {
     messagesBox.innerHTML = '';
     history.forEach(data => renderMessage(data, false));
@@ -189,10 +189,11 @@
     }
   }
 
-  // Renderizar mensajes
+  // Renderizar mensajes (Soporta tanto 'text' de MongoDB como 'message' en vivo)
   function renderMessage(data, playAlerts = true) {
     const myName = usernameInput.value.trim() || 'Anónimo';
     const isMine = data.user === myName;
+    const textContent = data.text || data.message || '';
 
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message');
@@ -200,7 +201,7 @@
 
     let contentHtml = `<div class="meta">${data.user}</div>`;
     
-    if (data.message) contentHtml += `<div class="text">${data.message}</div>`;
+    if (textContent) contentHtml += `<div class="text">${textContent}</div>`;
     if (data.fileType === 'image') contentHtml += `<img src="${data.file}" alt="Imagen">`;
     if (data.fileType === 'audio') contentHtml += `<audio src="${data.file}" controls></audio>`;
     
@@ -213,33 +214,13 @@
     // Sonido y Notificación flotante si el mensaje es de otra persona
     if (playAlerts && !isMine) {
       notifySound.play().catch(() => {});
-      showPushNotification(data.user, data.message);
+      showPushNotification(data.user, textContent);
     }
   }
 
-  // 1. Función para notificaciones flotantes
-  function showPushNotification(user, message) {
-    if ("Notification" in window && Notification.permission === "granted") {
-      if (document.hidden) {
-        new Notification(`Nuevo mensaje de ${user}`, {
-          body: message || "Te ha enviado un archivo",
-          icon: "https://cdn-icons-png.flaticon.com/512/134/134937.png"
-        });
-      }
-    }
-  }
-
-  // 2. Escuchar mensajes nuevos y llamar a la notificación
+  // Escuchar mensajes nuevos en tiempo real
   socket.on('newMessage', (data) => {
-    const myName = usernameInput.value.trim() || 'Anónimo';
-    const isMine = data.user === myName;
-
-    renderMessage(data);
-
-    if (!isMine) {
-      notifySound.play().catch(() => {});
-      showPushNotification(data.user, data.message);
-    }
+    renderMessage(data, true);
   });
 
   // Indicador de "Escribiendo..."
