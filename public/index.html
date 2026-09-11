@@ -81,6 +81,13 @@
 <script>
   const socket = io();
 
+  // Registrar Service Worker para soporte de notificaciones móviles
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker listo:', reg))
+      .catch(err => console.error('Error Service Worker:', err));
+  }
+
   // Gestión de Sala
   let room = window.location.hash.substring(1);
   if (!room) {
@@ -103,18 +110,21 @@
   // Sonido de notificación
   const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-  // Solicitar permiso de notificaciones con toque directo del usuario
-  notifyBtn.addEventListener('click', () => {
-    if ("Notification" in window) {
-      Notification.requestPermission().then(permission => {
-        if (permission === "granted") {
-          alert("¡Notificaciones activadas con éxito!");
-        } else {
-          alert("Debes permitir las notificaciones en los ajustes de tu celular.");
-        }
-      });
+  // Permiso de notificaciones activado por interacción directa del usuario
+  notifyBtn.addEventListener('click', async () => {
+    if (!('Notification' in window)) {
+      alert('Tu navegador no soporta notificaciones.');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      if ('serviceWorker' in navigator) {
+        await navigator.serviceWorker.ready;
+      }
+      alert('¡Notificaciones activadas con éxito!');
     } else {
-      alert("Tu dispositivo no soporta esta función.");
+      alert('Debes permitir las notificaciones en la configuración de tu celular.');
     }
   });
 
@@ -190,13 +200,22 @@
     }
   });
 
-  // Notificaciones flotantes
+  // Mostrar Notificación utilizando Service Worker / API nativa
   function showPushNotification(user, message) {
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(`Nuevo mensaje de ${user}`, {
+      const title = `Nuevo mensaje de ${user}`;
+      const options = {
         body: message || "Te ha enviado un archivo multimedia",
         icon: "https://cdn-icons-png.flaticon.com/512/134/134937.png"
-      });
+      };
+
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(title, options);
+        });
+      } else {
+        new Notification(title, options);
+      }
     }
   }
 
