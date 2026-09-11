@@ -8,7 +8,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 
 // ⚠️ REEMPLAZA ESTA LÍNEA CON TU CADENA DE CONEXIÓN DE MONGO DB ATLAS
-const MONGO_URI = process.env.MONGO_URI ||mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/?appName=Cluster0;
+const MONGO_URI = process.env.MONGO_URI ||"mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/?appName=Cluster0";
 
 // Conexión a MongoDB Atlas
 mongoose.connect(MONGO_URI)
