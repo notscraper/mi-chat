@@ -2,16 +2,15 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-  maxHttpBufferSize: 1e7 // Límite de 10MB para imágenes y audios
+  maxHttpBufferSize: 1e7 // Límite de 10MB
 });
 const path = require('path');
 const mongoose = require('mongoose');
 const webpush = require('web-push');
 
-// Configuración para recibir JSON en peticiones de suscripción
 app.use(express.json());
 
-// Configuración e integración de Web Push con Claves VAPID
+// Claves VAPID para Web Push
 const vapidKeys = webpush.generateVAPIDKeys();
 webpush.setVapidDetails(
   'mailto:admin@chat.com',
@@ -22,12 +21,11 @@ webpush.setVapidDetails(
 // Cadena de conexión a MongoDB Atlas
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/chat_db?retryWrites=true&w=majority";
 
-// Conexión a la base de datos en la nube
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
   .catch((err) => console.error('Error al conectar con MongoDB:', err));
 
-// Esquema de los mensajes en MongoDB
+// Esquema de Mensajes
 const messageSchema = new mongoose.Schema({
   room: String,
   user: String,
@@ -38,9 +36,10 @@ const messageSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Esquema para guardar las suscripciones de los celulares/dispositivos
+// Esquema de Suscripciones ligado al Nombre de Usuario
 const subscriptionSchema = new mongoose.Schema({
   endpoint: { type: String, unique: true },
+  user: String,
   keys: Object
 });
 
@@ -49,18 +48,18 @@ const Subscription = mongoose.model('Subscription', subscriptionSchema);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Ruta para entregar la clave pública VAPID al cliente
+// Entregar Clave Pública VAPID
 app.get('/vapidPublicKey', (req, res) => {
   res.send(vapidKeys.publicKey);
 });
 
-// Ruta para guardar la suscripción Push del dispositivo en MongoDB
+// Guardar suscripción Push asociada al Usuario
 app.post('/subscribe', async (req, res) => {
   try {
-    const subscription = req.body;
+    const { subscription, user } = req.body;
     await Subscription.findOneAndUpdate(
       { endpoint: subscription.endpoint },
-      subscription,
+      { ...subscription, user: user },
       { upsert: true, new: true }
     );
     res.status(201).json({ success: true });
@@ -73,7 +72,6 @@ app.post('/subscribe', async (req, res) => {
 io.on('connection', (socket) => {
   let currentRoom = '';
 
-  // Al unirse a una sala, enviar el historial guardado desde MongoDB
   socket.on('joinRoom', async (roomId) => {
     if (currentRoom) socket.leave(currentRoom);
     currentRoom = roomId;
@@ -87,7 +85,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Guardar y retransmitir nuevo mensaje + enviar notificación push
   socket.on('sendMessage', async (data) => {
     if (data.room) {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -106,10 +103,8 @@ io.on('connection', (socket) => {
           time: timeStr
         });
 
-        // Guardado permanente en la nube
         await newMsg.save();
 
-        // Emitir mensaje en tiempo real a los usuarios conectados
         io.to(data.room).emit('newMessage', {
           user: userStr,
           message: textStr,
@@ -118,12 +113,13 @@ io.on('connection', (socket) => {
           time: timeStr
         });
 
-        // Enviar Notificación Push en segundo plano a los dispositivos
-        const subscriptions = await Subscription.find();
+        // ENVIAR NOTIFICACIÓN A TODOS EXCEPTO AL REMITENTE
+        const subscriptions = await Subscription.find({ user: { $ne: userStr } });
+        
         let bodyText = textStr;
         if (!bodyText) {
           if (fileType === 'image') bodyText = '📷 Te envió una imagen';
-          else if (fileType === 'audio') bodyText = '🎤 Te envió un nota de voz';
+          else if (fileType === 'audio') bodyText = '🎤 Te envió una nota de voz';
           else bodyText = 'Te envió un archivo multimedia';
         }
 
@@ -134,7 +130,6 @@ io.on('connection', (socket) => {
 
         subscriptions.forEach(sub => {
           webpush.sendNotification(sub, payload).catch(err => {
-            // Si el dispositivo expiró o revocó el permiso, se elimina de la base de datos
             if (err.statusCode === 410 || err.statusCode === 404) {
               Subscription.deleteOne({ endpoint: sub.endpoint }).exec();
             }
@@ -147,7 +142,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Notificación de "Escribiendo..."
   socket.on('typing', (data) => {
     socket.to(data.room).emit('userTyping', data.user);
   });
