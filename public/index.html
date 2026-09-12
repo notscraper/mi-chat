@@ -21,13 +21,20 @@
     body { background: var(--bg-primary); color: var(--text-main); height: 100vh; display: flex; align-items: center; justify-content: center; }
     .chat-container { width: 100%; max-width: 500px; height: 92vh; background: var(--bg-card); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #334155; }
     
+    /* Overlay para selección de Usuario */
+    .user-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99; padding: 20px; text-align: center; }
+    .user-modal h3 { margin-bottom: 20px; font-size: 1.3rem; }
+    .user-options { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 320px; }
+    .btn-user { flex: 1; min-width: 120px; padding: 14px; background: #334155; border: 2px solid var(--accent); color: #fff; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-user:hover { background: var(--accent); }
+
     .header { background: var(--bg-card); padding: 16px; text-align: center; border-bottom: 1px solid #334155; position: relative; }
     .header h2 { font-size: 1.1rem; color: var(--text-main); }
     .room-info { font-size: 0.8rem; color: var(--accent); margin-top: 4px; font-weight: 600; }
     .typing-indicator { font-size: 0.75rem; color: var(--text-muted); height: 16px; margin-top: 2px; }
 
-    /* Botón de Notificaciones en el Header */
     .btn-notify { position: absolute; right: 16px; top: 16px; background: transparent; border: none; font-size: 1.2rem; cursor: pointer; }
+    .user-tag { position: absolute; left: 16px; top: 18px; font-size: 0.75rem; background: #334155; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
 
     .messages-box { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: var(--bg-chat); }
     .message { max-width: 80%; padding: 10px 14px; border-radius: 14px; font-size: 0.95rem; background: var(--msg-other); align-self: flex-start; word-wrap: break-word; }
@@ -39,7 +46,6 @@
 
     .input-area { padding: 12px; background: var(--bg-card); display: flex; gap: 8px; align-items: center; border-top: 1px solid #334155; }
     .input-area input[type="text"] { flex: 1; padding: 10px 14px; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 20px; outline: none; font-size: 0.9rem; }
-    .input-area input[type="text"]::placeholder { color: var(--text-muted); }
     
     .btn-icon { background: #334155; color: #fff; border: none; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; font-size: 1.1rem; }
     .btn-icon:hover { background: var(--accent); }
@@ -52,8 +58,19 @@
 </head>
 <body>
 
+<!-- Modal para elegir perfil al entrar -->
+<div class="user-modal" id="userModal">
+  <h3>¿Quién eres?</h3>
+  <div class="user-options">
+    <!-- Puedes cambiar estos nombres por los que desees -->
+    <button class="btn-user" onclick="selectUser('Alex')">👤 Alex</button>
+    <button class="btn-user" onclick="selectUser('Sofía')">👤 Sofía</button>
+  </div>
+</div>
+
 <div class="chat-container">
   <div class="header">
+    <div class="user-tag" id="userTag" title="Cambiar usuario">...</div>
     <button class="btn-notify" id="notifyBtn" title="Activar Notificaciones">🔔</button>
     <h2>💬 Chat Privado</h2>
     <div class="room-info" id="roomLabel">Conectando...</div>
@@ -63,8 +80,6 @@
   <div class="messages-box" id="messagesBox"></div>
 
   <div class="input-area">
-    <input type="text" id="username" placeholder="Tu apodo" style="max-width: 90px;">
-    
     <label class="btn-icon" title="Enviar Imagen">
       📷
       <input type="file" id="imageInput" accept="image/*" style="display:none;">
@@ -81,6 +96,34 @@
 <script>
   const socket = io();
 
+  // Gestión de Usuario mediante localStorage
+  let currentUser = localStorage.getItem('chat_username') || '';
+  const userModal = document.getElementById('userModal');
+  const userTag = document.getElementById('userTag');
+
+  function updateUserInfo() {
+    if (currentUser) {
+      userModal.style.display = 'none';
+      userTag.textContent = `👤 ${currentUser}`;
+    } else {
+      userModal.style.display = 'flex';
+    }
+  }
+
+  function selectUser(name) {
+    currentUser = name;
+    localStorage.setItem('chat_username', name);
+    updateUserInfo();
+    // Volver a vincular las notificaciones al nuevo usuario si la campana ya estaba activa
+    autoSubscribePush();
+  }
+
+  userTag.addEventListener('click', () => {
+    userModal.style.display = 'flex';
+  });
+
+  updateUserInfo();
+
   // Registrar Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
@@ -88,7 +131,6 @@
       .catch(err => console.error('Error al registrar Service Worker:', err));
   }
 
-  // Función para convertir clave VAPID de Base64 a Uint8Array
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -112,68 +154,70 @@
   // Elementos HTML
   const messagesBox = document.getElementById('messagesBox');
   const messageInput = document.getElementById('messageInput');
-  const usernameInput = document.getElementById('username');
   const sendBtn = document.getElementById('sendBtn');
   const imageInput = document.getElementById('imageInput');
   const recBtn = document.getElementById('recBtn');
   const typingLabel = document.getElementById('typingLabel');
   const notifyBtn = document.getElementById('notifyBtn');
 
-  // Sonido de notificación
   const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-  // Activar y suscribir Notificaciones Push al pulsar la campana
+  // Función para suscribir Push vinculada al usuario
+  async function autoSubscribePush() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !currentUser) return;
+    if (Notification.permission === 'granted') {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const response = await fetch('/vapidPublicKey');
+        const vapidPublicKey = await response.text();
+
+        const subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        });
+
+        await fetch('/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: subscription,
+            user: currentUser
+          })
+        });
+      } catch (err) {
+        console.error('Error al autosuscribir:', err);
+      }
+    }
+  }
+
   notifyBtn.addEventListener('click', async () => {
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-      alert('Tu navegador no soporta notificaciones push.');
+    if (!currentUser) {
+      alert('Primero selecciona un usuario.');
       return;
     }
 
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        const reg = await navigator.serviceWorker.ready;
-
-        // 1. Obtener la clave pública VAPID desde server.js
-        const response = await fetch('/vapidPublicKey');
-        const vapidPublicKey = await response.text();
-
-        // 2. Crear suscripción Web Push en el teléfono
-        const subscription = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-        });
-
-        // 3. Guardar la suscripción en MongoDB
-        await fetch('/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(subscription)
-        });
-
-        alert('¡Notificaciones Push activadas con éxito! Ahora te llegarán con la app cerrada.');
+        await autoSubscribePush();
+        alert(`¡Notificaciones Push activadas para ${currentUser}!`);
       } else {
-        alert('Debes permitir el permiso en la configuración de tu teléfono.');
+        alert('Debes permitir el permiso en la configuración de tu dispositivo.');
       }
     } catch (err) {
-      console.error('Error al suscribir a notificaciones:', err);
-      alert('Hubo un problema al registrar la notificación.');
+      console.error('Error en notificaciones:', err);
     }
   });
 
-  // Cargar historial pasado desde MongoDB
   socket.on('loadHistory', (history) => {
     messagesBox.innerHTML = '';
     history.forEach(data => renderMessage(data, false));
   });
 
-  // Enviar mensaje de texto
   function sendMessage() {
     const text = messageInput.value.trim();
-    const user = usernameInput.value.trim() || 'Anónimo';
-
-    if (text !== '') {
-      socket.emit('sendMessage', { room, user, message: text });
+    if (text !== '' && currentUser) {
+      socket.emit('sendMessage', { room, user: currentUser, message: text });
       messageInput.value = '';
     }
   }
@@ -181,28 +225,26 @@
   sendBtn.addEventListener('click', sendMessage);
   messageInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendMessage();
-    socket.emit('typing', { room, user: usernameInput.value.trim() || 'Anónimo' });
+    socket.emit('typing', { room, user: currentUser });
   });
 
-  // Enviar Imágenes
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && currentUser) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const user = usernameInput.value.trim() || 'Anónimo';
-        socket.emit('sendMessage', { room, user, file: evt.target.result, fileType: 'image' });
+        socket.emit('sendMessage', { room, user: currentUser, file: evt.target.result, fileType: 'image' });
       };
       reader.readAsDataURL(file);
     }
   });
 
-  // Grabar Audio
   let mediaRecorder;
   let audioChunks = [];
   let isRecording = false;
 
   recBtn.addEventListener('click', async () => {
+    if (!currentUser) return;
     if (!isRecording) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -214,8 +256,7 @@
           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
           const reader = new FileReader();
           reader.onload = (evt) => {
-            const user = usernameInput.value.trim() || 'Anónimo';
-            socket.emit('sendMessage', { room, user, file: evt.target.result, fileType: 'audio' });
+            socket.emit('sendMessage', { room, user: currentUser, file: evt.target.result, fileType: 'audio' });
           };
           reader.readAsDataURL(audioBlob);
         };
@@ -233,10 +274,8 @@
     }
   });
 
-  // Renderizar mensajes
   function renderMessage(data, playAlerts = true) {
-    const myName = usernameInput.value.trim() || 'Anónimo';
-    const isMine = data.user === myName;
+    const isMine = data.user === currentUser;
     const textContent = data.text || data.message || '';
 
     const msgDiv = document.createElement('div');
@@ -260,12 +299,10 @@
     }
   }
 
-  // Escuchar mensajes nuevos
   socket.on('newMessage', (data) => {
     renderMessage(data, true);
   });
 
-  // Indicador de "Escribiendo..."
   let typingTimeout;
   socket.on('userTyping', (user) => {
     typingLabel.textContent = `${user} está escribiendo...`;
