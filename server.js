@@ -1,202 +1,126 @@
 const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http, {
-  maxHttpBufferSize: 1e7 // Límite de 10MB para multimedia y videonotas
-});
-const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 const mongoose = require('mongoose');
-const webpush = require('web-push');
 
-app.use(express.json());
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { maxHttpBufferSize: 1e7 }); // Soporta adjuntos grandes
 
-// Claves VAPID para Web Push
-const vapidKeys = webpush.generateVAPIDKeys();
-webpush.setVapidDetails(
-  'mailto:admin@chat.com',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+app.use(express.static('public'));
 
-// Cadena de conexión a MongoDB Atlas
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/chat_db?retryWrites=true&w=majority";
+// Conexión MongoDB (Asegúrate de colocar tu URI correcta)
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/chatapp';
+mongoose.connect(mongoURI)
+  .then(() => console.log('MongoDB Conectado'))
+  .catch(err => console.error('Error Mongo:', err));
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
-  .catch((err) => console.error('Error al conectar con MongoDB:', err));
-
-// Esquema de Mensajes por Sala
-const messageSchema = new mongoose.Schema({
+// Esquema del Mensaje
+const MessageSchema = new mongoose.Schema({
   room: String,
   user: String,
-  text: String,
+  message: String,
   file: String,
-  fileType: String, // 'image', 'audio', 'video'
-  replyTo: {
-    user: String,
-    text: String
-  },
-  isEdited: { type: Boolean, default: false },
+  fileType: String,
+  replyTo: Object,
   time: String,
-  createdAt: { type: Date, default: Date.now }
+  isEdited: { type: Boolean, default: false },
+  readBy: { type: [String], default: [] },
+  reactions: { type: Map, of: String, default: {} } // { "nombreUsuario": "👍" }
 });
 
-// Esquema de Suscripciones Web Push asociadas al Socket y Sala
-const subscriptionSchema = new mongoose.Schema({
-  endpoint: { type: String, unique: true },
-  socketId: String,
-  room: String,
-  keys: Object
-});
+const Message = mongoose.model('Message', MessageSchema);
 
-const Message = mongoose.model('Message', messageSchema);
-const Subscription = mongoose.model('Subscription', subscriptionSchema);
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/vapidPublicKey', (req, res) => {
-  res.send(vapidKeys.publicKey);
-});
-
-// Registrar o actualizar suscripción Push
-app.post('/subscribe', async (req, res) => {
-  try {
-    const { subscription, socketId, room } = req.body;
-    await Subscription.findOneAndUpdate(
-      { endpoint: subscription.endpoint },
-      { ...subscription, socketId: socketId, room: room },
-      { upsert: true, new: true }
-    );
-    res.status(201).json({ success: true });
-  } catch (error) {
-    console.error('Error al guardar suscripción Push:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+// Rastreo de Presencia En Línea
+const onlineUsers = {}; // { socketId: { room, user } }
 
 io.on('connection', (socket) => {
-  let currentRoom = '';
+  
+  socket.on('joinRoom', async ({ room, user }) => {
+    socket.join(room);
+    onlineUsers[socket.id] = { room, user };
 
-  socket.on('joinRoom', async (roomId) => {
-    if (!roomId) return;
-    if (currentRoom) socket.leave(currentRoom);
-    currentRoom = roomId;
-    socket.join(roomId);
+    // Emitir lista de usuarios en línea en esta sala
+    const usersInRoom = Object.values(onlineUsers)
+      .filter(u => u.room === room)
+      .map(u => u.user);
+    io.to(room).emit('onlineStatus', usersInRoom);
 
-    try {
-      const history = await Message.find({ room: roomId }).sort({ createdAt: 1 }).exec();
-      socket.emit('loadHistory', history);
-    } catch (err) {
-      console.error('Error al cargar historial:', err);
-    }
+    // Cargar historial
+    const history = await Message.find({ room }).sort({ _id: 1 });
+    socket.emit('loadHistory', history);
   });
 
   socket.on('sendMessage', async (data) => {
-    if (data.room) {
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const userStr = data.user || 'Anónimo';
-      const textStr = data.message || '';
-      const fileData = data.file || null;
-      const fileKind = data.fileType || null;
-      const replyData = data.replyTo || null;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newMsg = new Message({
+      room: data.room,
+      user: data.user,
+      message: data.message || '',
+      file: data.file || '',
+      fileType: data.fileType || '',
+      replyTo: data.replyTo || null,
+      time,
+      readBy: [data.user]
+    });
 
-      try {
-        const newMsg = new Message({
-          room: data.room,
-          user: userStr,
-          text: textStr,
-          file: fileData,
-          fileType: fileKind,
-          replyTo: replyData,
-          time: timeStr
-        });
+    await newMsg.save();
+    io.to(data.room).emit('newMessage', newMsg);
+  });
 
-        const savedMsg = await newMsg.save();
+  // Marcar Mensajes como Leídos (Doble Check Azul)
+  socket.on('markAsRead', async ({ room, user }) => {
+    await Message.updateMany(
+      { room, readBy: { $ne: user } },
+      { $addToSet: { readBy: user } }
+    );
+    io.to(room).emit('messagesRead', { user });
+  });
 
-        io.to(data.room).emit('newMessage', {
-          _id: savedMsg._id,
-          room: data.room,
-          user: userStr,
-          message: textStr,
-          file: fileData,
-          fileType: fileKind,
-          replyTo: replyData,
-          isEdited: false,
-          time: timeStr
-        });
-
-        // Notificar por Web Push
-        const subscriptions = await Subscription.find({ 
-          room: data.room, 
-          socketId: { $ne: socket.id } 
-        });
-        
-        let bodyText = textStr;
-        if (!bodyText) {
-          if (fileKind === 'image') bodyText = '📷 Te envió una imagen';
-          else if (fileKind === 'audio') bodyText = '🎤 Te envió una nota de voz';
-          else if (fileKind === 'video') bodyText = '📹 Te envió una videonota';
-          else bodyText = 'Te envió un archivo multimedia';
-        }
-
-        const payload = JSON.stringify({
-          title: `Mensaje en ${data.room}`,
-          body: `${userStr}: ${bodyText}`
-        });
-
-        subscriptions.forEach(sub => {
-          webpush.sendNotification(sub, payload).catch(err => {
-            if (err.statusCode === 410 || err.statusCode === 404) {
-              Subscription.deleteOne({ endpoint: sub.endpoint }).exec();
-            }
-          });
-        });
-
-      } catch (err) {
-        console.error('Error al procesar mensaje:', err);
+  // Reacciones Rápidas
+  socket.on('toggleReaction', async ({ messageId, room, user, emoji }) => {
+    const msg = await Message.findById(messageId);
+    if (msg) {
+      if (!msg.reactions) msg.reactions = new Map();
+      
+      if (msg.reactions.get(user) === emoji) {
+        msg.reactions.delete(user); // Quitar si presiona el mismo
+      } else {
+        msg.reactions.set(user, emoji); // Agregar o actualizar
       }
+      
+      await msg.save();
+      io.to(room).emit('reactionUpdated', { messageId, reactions: Object.fromEntries(msg.reactions) });
     }
   });
 
-  // Evento para Editar Mensaje
-  socket.on('editMessage', async (data) => {
-    try {
-      const { messageId, room, newText } = data;
-      const updated = await Message.findByIdAndUpdate(
-        messageId,
-        { text: newText, isEdited: true },
-        { new: true }
-      );
-      if (updated) {
-        io.to(room).emit('messageEdited', {
-          messageId: updated._id,
-          newText: updated.text
-        });
-      }
-    } catch (err) {
-      console.error('Error al editar mensaje:', err);
-    }
+  // Editar Mensaje
+  socket.on('editMessage', async ({ messageId, room, newText }) => {
+    await Message.findByIdAndUpdate(messageId, { message: newText, isEdited: true });
+    io.to(room).emit('messageEdited', { messageId, newText });
   });
 
-  // Evento para Borrar Mensaje
-  socket.on('deleteMessage', async (data) => {
-    try {
-      const { messageId, room } = data;
-      await Message.findByIdAndDelete(messageId);
-      io.to(room).emit('messageDeleted', { messageId });
-    } catch (err) {
-      console.error('Error al eliminar mensaje:', err);
-    }
+  // Eliminar Mensaje
+  socket.on('deleteMessage', async ({ messageId, room }) => {
+    await Message.findByIdAndDelete(messageId);
+    io.to(room).emit('messageDeleted', { messageId });
   });
 
-  socket.on('typing', (data) => {
-    if (data.room) {
-      socket.to(data.room).emit('userTyping', data.user || 'Alguien');
+  socket.on('typing', ({ room, user }) => {
+    socket.to(room).emit('userTyping', user);
+  });
+
+  socket.on('disconnect', () => {
+    const userInfo = onlineUsers[socket.id];
+    if (userInfo) {
+      delete onlineUsers[socket.id];
+      const usersInRoom = Object.values(onlineUsers)
+        .filter(u => u.room === userInfo.room)
+        .map(u => u.user);
+      io.to(userInfo.room).emit('onlineStatus', usersInRoom);
     }
   });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-  console.log(`Servidor activo en puerto ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
