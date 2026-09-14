@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat Multimedia</title>
+  <title>Chat Privado Directo</title>
   <style>
     :root {
       --bg-primary: #0f172a;
@@ -19,27 +19,41 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background: var(--bg-primary); color: var(--text-main); height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .chat-container { width: 100%; max-width: 500px; height: 92vh; background: var(--bg-card); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #334155; }
     
-    /* Overlay para selección de Usuario */
-    .user-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99; padding: 20px; text-align: center; }
-    .user-modal h3 { margin-bottom: 20px; font-size: 1.3rem; }
-    .user-options { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 320px; }
-    .btn-user { flex: 1; min-width: 120px; padding: 14px; background: #334155; border: 2px solid var(--accent); color: #fff; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .chat-container { width: 100%; max-width: 480px; height: 92vh; background: var(--bg-card); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #334155; position: relative; }
+    
+    /* Overlay para Selección de Usuario */
+    .user-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.98); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; padding: 20px; text-align: center; }
+    .user-modal h3 { margin-bottom: 8px; font-size: 1.4rem; }
+    .user-modal p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 24px; }
+    .user-options { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px; }
+    .btn-user { width: 100%; padding: 14px; background: #334155; border: 2px solid var(--accent); color: #fff; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
     .btn-user:hover { background: var(--accent); }
 
-    .header { background: var(--bg-card); padding: 16px; text-align: center; border-bottom: 1px solid #334155; position: relative; }
-    .header h2 { font-size: 1.1rem; color: var(--text-main); }
-    .room-info { font-size: 0.8rem; color: var(--accent); margin-top: 4px; font-weight: 600; }
-    .typing-indicator { font-size: 0.75rem; color: var(--text-muted); height: 16px; margin-top: 2px; }
+    /* Pantalla de Contactos / Chats */
+    .contacts-screen { display: flex; flex-direction: column; height: 100%; width: 100%; background: var(--bg-card); }
+    .contacts-header { padding: 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+    .contacts-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .contact-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+    .contact-item:hover { background: #334155; }
+    .contact-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; }
+    .contact-info { flex: 1; }
+    .contact-name { font-weight: 600; font-size: 1rem; }
+    .contact-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
 
-    .btn-notify { position: absolute; right: 16px; top: 16px; background: transparent; border: none; font-size: 1.2rem; cursor: pointer; }
-    .user-tag { position: absolute; left: 16px; top: 18px; font-size: 0.75rem; background: #334155; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+    /* Pantalla de Conversación Directa */
+    .conversation-screen { display: none; flex-direction: column; height: 100%; width: 100%; background: var(--bg-chat); }
+    .header { background: var(--bg-card); padding: 12px 16px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+    .btn-back { background: transparent; border: none; color: var(--text-main); font-size: 1.3rem; cursor: pointer; padding: 4px; }
+    .header-info { flex: 1; }
+    .header-info h2 { font-size: 1rem; }
+    .typing-indicator { font-size: 0.75rem; color: var(--accent); height: 14px; }
 
-    .messages-box { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: var(--bg-chat); }
+    .btn-notify { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; }
+
+    .messages-box { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
     .message { max-width: 80%; padding: 10px 14px; border-radius: 14px; font-size: 0.95rem; background: var(--msg-other); align-self: flex-start; word-wrap: break-word; }
     .message.mine { background: var(--msg-mine); align-self: flex-end; }
-    .message .meta { font-size: 0.7rem; color: #cbd5e1; font-weight: bold; margin-bottom: 4px; }
     .message .time { font-size: 0.65rem; color: var(--text-muted); text-align: right; margin-top: 4px; }
     .message img { max-width: 100%; border-radius: 8px; margin-top: 6px; }
     .message audio { max-width: 100%; margin-top: 6px; }
@@ -58,71 +72,85 @@
 </head>
 <body>
 
-<!-- Modal para elegir perfil al entrar -->
-<div class="user-modal" id="userModal">
-  <h3>¿Quién eres?</h3>
-  <div class="user-options">
-    <!-- Puedes cambiar estos nombres por los que desees -->
-    <button class="btn-user" onclick="selectUser('memo')">👤 memo</button>
-    <button class="btn-user" onclick="selectUser('regi')">👤 regi</button>
-  </div>
-</div>
-
 <div class="chat-container">
-  <div class="header">
-    <div class="user-tag" id="userTag" title="Cambiar usuario">...</div>
-    <button class="btn-notify" id="notifyBtn" title="Activar Notificaciones">🔔</button>
-    <h2>💬 Chat Privado</h2>
-    <div class="room-info" id="roomLabel">Conectando...</div>
-    <div class="typing-indicator" id="typingLabel"></div>
+
+  <!-- Modal Inicial: Identificación -->
+  <div class="user-modal" id="userModal">
+    <h3>¿Quién eres?</h3>
+    <p>Selecciona tu perfil en este dispositivo</p>
+    <div class="user-options">
+      <!-- Cambia o agrega usuarios según lo requieras -->
+      <button class="btn-user" onclick="selectProfile('Alex')">👤 Alex</button>
+      <button class="btn-user" onclick="selectProfile('Sofía')">👤 Sofía</button>
+    </div>
   </div>
 
-  <div class="messages-box" id="messagesBox"></div>
-
-  <div class="input-area">
-    <label class="btn-icon" title="Enviar Imagen">
-      📷
-      <input type="file" id="imageInput" accept="image/*" style="display:none;">
-    </label>
-
-    <button class="btn-icon btn-rec" id="recBtn" title="Grabar Audio">🎤</button>
-
-    <input type="text" id="messageInput" placeholder="Escribe algo..." autocomplete="off">
-    <button class="btn-send" id="sendBtn">Enviar</button>
+  <!-- Vista 1: Lista de Contactos (WhatsApp style) -->
+  <div class="contacts-screen" id="contactsScreen">
+    <div class="contacts-header">
+      <h2 id="myProfileTitle">Chats</h2>
+      <div>
+        <button class="btn-notify" id="notifyBtn" title="Activar Notificaciones">🔔</button>
+        <button class="btn-back" onclick="changeProfile()" title="Cambiar de perfil">⚙️</button>
+      </div>
+    </div>
+    <div class="contacts-list" id="contactsList">
+      <!-- Se genera dinámicamente -->
+    </div>
   </div>
+
+  <!-- Vista 2: Chat 1 a 1 -->
+  <div class="conversation-screen" id="conversationScreen">
+    <div class="header">
+      <button class="btn-back" onclick="closeChat()">←</button>
+      <div class="header-info">
+        <h2 id="activeContactName">Contacto</h2>
+        <div class="typing-indicator" id="typingLabel"></div>
+      </div>
+    </div>
+
+    <div class="messages-box" id="messagesBox"></div>
+
+    <div class="input-area">
+      <label class="btn-icon" title="Enviar Imagen">
+        📷
+        <input type="file" id="imageInput" accept="image/*" style="display:none;">
+      </label>
+
+      <button class="btn-icon btn-rec" id="recBtn" title="Grabar Audio">🎤</button>
+
+      <input type="text" id="messageInput" placeholder="Escribe un mensaje..." autocomplete="off">
+      <button class="btn-send" id="sendBtn">Enviar</button>
+    </div>
+  </div>
+
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
 
-  // Gestión de Usuario mediante localStorage
+  // Lista de usuarios registrados en el sistema
+  const ALL_USERS = ['Alex', 'Sofía'];
+
   let currentUser = localStorage.getItem('chat_username') || '';
+  let activeReceiver = '';
+
   const userModal = document.getElementById('userModal');
-  const userTag = document.getElementById('userTag');
+  const contactsScreen = document.getElementById('contactsScreen');
+  const conversationScreen = document.getElementById('conversationScreen');
+  const contactsList = document.getElementById('contactsList');
+  const myProfileTitle = document.getElementById('myProfileTitle');
+  const activeContactName = document.getElementById('activeContactName');
+  const messagesBox = document.getElementById('messagesBox');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const imageInput = document.getElementById('imageInput');
+  const recBtn = document.getElementById('recBtn');
+  const typingLabel = document.getElementById('typingLabel');
+  const notifyBtn = document.getElementById('notifyBtn');
 
-  function updateUserInfo() {
-    if (currentUser) {
-      userModal.style.display = 'none';
-      userTag.textContent = `👤 ${currentUser}`;
-    } else {
-      userModal.style.display = 'flex';
-    }
-  }
-
-  function selectUser(name) {
-    currentUser = name;
-    localStorage.setItem('chat_username', name);
-    updateUserInfo();
-    // Volver a vincular las notificaciones al nuevo usuario si la campana ya estaba activa
-    autoSubscribePush();
-  }
-
-  userTag.addEventListener('click', () => {
-    userModal.style.display = 'flex';
-  });
-
-  updateUserInfo();
+  const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
   // Registrar Service Worker
   if ('serviceWorker' in navigator) {
@@ -142,27 +170,63 @@
     return outputArray;
   }
 
-  // Gestión de Sala
-  let room = window.location.hash.substring(1);
-  if (!room) {
-    room = "sala-principal";
-    window.location.hash = room;
+  function initApp() {
+    if (currentUser) {
+      userModal.style.display = 'none';
+      myProfileTitle.textContent = `Chats (${currentUser})`;
+      renderContacts();
+      autoSubscribePush();
+    } else {
+      userModal.style.display = 'flex';
+    }
   }
-  document.getElementById('roomLabel').textContent = `#${room}`;
-  socket.emit('joinRoom', room);
 
-  // Elementos HTML
-  const messagesBox = document.getElementById('messagesBox');
-  const messageInput = document.getElementById('messageInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const imageInput = document.getElementById('imageInput');
-  const recBtn = document.getElementById('recBtn');
-  const typingLabel = document.getElementById('typingLabel');
-  const notifyBtn = document.getElementById('notifyBtn');
+  function selectProfile(name) {
+    currentUser = name;
+    localStorage.setItem('chat_username', name);
+    initApp();
+  }
 
-  const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+  function changeProfile() {
+    userModal.style.display = 'flex';
+  }
 
-  // Función para suscribir Push vinculada al usuario
+  function renderContacts() {
+    contactsList.innerHTML = '';
+    const otherUsers = ALL_USERS.filter(u => u !== currentUser);
+
+    otherUsers.forEach(user => {
+      const item = document.createElement('div');
+      item.classList.add('contact-item');
+      item.innerHTML = `
+        <div class="contact-avatar">${user.charAt(0)}</div>
+        <div class="contact-info">
+          <div class="contact-name">${user}</div>
+          <div class="contact-sub">Toca para abrir chat privado</div>
+        </div>
+      `;
+      item.onclick = () => openChat(user);
+      contactsList.appendChild(item);
+    });
+  }
+
+  function openChat(receiverName) {
+    activeReceiver = receiverName;
+    activeContactName.textContent = receiverName;
+    contactsScreen.style.display = 'none';
+    conversationScreen.style.display = 'flex';
+
+    // Unirse a la sala 1 a 1 en el servidor
+    socket.emit('joinRoom', { sender: currentUser, receiver: activeReceiver });
+  }
+
+  function closeChat() {
+    activeReceiver = '';
+    conversationScreen.style.display = 'none';
+    contactsScreen.style.display = 'flex';
+  }
+
+  // Notificaciones Web Push
   async function autoSubscribePush() {
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !currentUser) return;
     if (Notification.permission === 'granted') {
@@ -185,30 +249,27 @@
           })
         });
       } catch (err) {
-        console.error('Error al autosuscribir:', err);
+        console.error('Error al suscribir notificaciones:', err);
       }
     }
   }
 
   notifyBtn.addEventListener('click', async () => {
-    if (!currentUser) {
-      alert('Primero selecciona un usuario.');
-      return;
-    }
-
+    if (!currentUser) return;
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         await autoSubscribePush();
-        alert(`¡Notificaciones Push activadas para ${currentUser}!`);
+        alert(`¡Notificaciones activadas para ${currentUser}!`);
       } else {
-        alert('Debes permitir el permiso en la configuración de tu dispositivo.');
+        alert('Debes otorgar permisos en la configuración de tu navegador.');
       }
     } catch (err) {
-      console.error('Error en notificaciones:', err);
+      console.error('Error:', err);
     }
   });
 
+  // Renderizado de mensajes
   socket.on('loadHistory', (history) => {
     messagesBox.innerHTML = '';
     history.forEach(data => renderMessage(data, false));
@@ -216,8 +277,12 @@
 
   function sendMessage() {
     const text = messageInput.value.trim();
-    if (text !== '' && currentUser) {
-      socket.emit('sendMessage', { room, user: currentUser, message: text });
+    if (text !== '' && currentUser && activeReceiver) {
+      socket.emit('sendMessage', {
+        sender: currentUser,
+        receiver: activeReceiver,
+        message: text
+      });
       messageInput.value = '';
     }
   }
@@ -225,15 +290,22 @@
   sendBtn.addEventListener('click', sendMessage);
   messageInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendMessage();
-    socket.emit('typing', { room, user: currentUser });
+    if (activeReceiver) {
+      socket.emit('typing', { sender: currentUser, receiver: activeReceiver });
+    }
   });
 
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
-    if (file && currentUser) {
+    if (file && currentUser && activeReceiver) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        socket.emit('sendMessage', { room, user: currentUser, file: evt.target.result, fileType: 'image' });
+        socket.emit('sendMessage', {
+          sender: currentUser,
+          receiver: activeReceiver,
+          file: evt.target.result,
+          fileType: 'image'
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -244,7 +316,7 @@
   let isRecording = false;
 
   recBtn.addEventListener('click', async () => {
-    if (!currentUser) return;
+    if (!currentUser || !activeReceiver) return;
     if (!isRecording) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -256,7 +328,12 @@
           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
           const reader = new FileReader();
           reader.onload = (evt) => {
-            socket.emit('sendMessage', { room, user: currentUser, file: evt.target.result, fileType: 'audio' });
+            socket.emit('sendMessage', {
+              sender: currentUser,
+              receiver: activeReceiver,
+              file: evt.target.result,
+              fileType: 'audio'
+            });
           };
           reader.readAsDataURL(audioBlob);
         };
@@ -265,7 +342,7 @@
         isRecording = true;
         recBtn.classList.add('recording');
       } catch (err) {
-        alert('Se necesita permiso para usar el micrófono.');
+        alert('Permiso de micrófono denegado.');
       }
     } else {
       mediaRecorder.stop();
@@ -275,15 +352,14 @@
   });
 
   function renderMessage(data, playAlerts = true) {
-    const isMine = data.user === currentUser;
-    const textContent = data.text || data.message || '';
+    const isMine = data.sender === currentUser;
+    const textContent = data.text || '';
 
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message');
     if (isMine) msgDiv.classList.add('mine');
 
-    let contentHtml = `<div class="meta">${data.user}</div>`;
-    
+    let contentHtml = '';
     if (textContent) contentHtml += `<div class="text">${textContent}</div>`;
     if (data.fileType === 'image') contentHtml += `<img src="${data.file}" alt="Imagen">`;
     if (data.fileType === 'audio') contentHtml += `<audio src="${data.file}" controls></audio>`;
@@ -300,15 +376,25 @@
   }
 
   socket.on('newMessage', (data) => {
-    renderMessage(data, true);
+    // Solo mostrar en pantalla si el mensaje pertenece al chat que está abierto actualmente
+    if (
+      (data.sender === currentUser && data.receiver === activeReceiver) ||
+      (data.sender === activeReceiver && data.receiver === currentUser)
+    ) {
+      renderMessage(data, true);
+    }
   });
 
   let typingTimeout;
-  socket.on('userTyping', (user) => {
-    typingLabel.textContent = `${user} está escribiendo...`;
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => { typingLabel.textContent = ''; }, 2000);
+  socket.on('userTyping', (sender) => {
+    if (sender === activeReceiver) {
+      typingLabel.textContent = 'escribiendo...';
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => { typingLabel.textContent = ''; }, 2000);
+    }
   });
+
+  initApp();
 </script>
 </body>
 </html>
