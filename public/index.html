@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-  <title>WhatsApp Web</title>
+  <title>WhatsApp Web Pro</title>
   <style>
     :root {
       --wa-header-bg: #075e54;
@@ -107,10 +107,7 @@
     .btn-create-chat { background: var(--wa-teal); }
     .btn-join-chat { background: #334155; }
 
-    .chats-list {
-      flex: 1;
-      overflow-y: auto;
-    }
+    .chats-list { flex: 1; overflow-y: auto; }
 
     .chat-item {
       display: flex;
@@ -120,7 +117,6 @@
       border-bottom: 1px solid #f0f2f5;
       cursor: pointer;
     }
-
     .chat-item:hover { background: #f5f6f6; }
 
     .chat-avatar {
@@ -178,7 +174,8 @@
     }
 
     .header-details h2 { font-size: 1rem; line-height: 1.2; }
-    .typing-indicator { font-size: 0.75rem; color: #e9edef; font-style: italic; height: 14px; }
+    .typing-indicator { font-size: 0.75rem; color: #25d366; font-weight: 500; height: 14px; }
+    .online-indicator { font-size: 0.75rem; color: #e9edef; font-style: italic; }
 
     .header-actions {
       margin-left: auto;
@@ -192,6 +189,22 @@
       color: #fff;
       font-size: 1.2rem;
       cursor: pointer;
+    }
+
+    /* Buscador en el Chat */
+    .search-bar-container {
+      display: none;
+      background: #f0f2f5;
+      padding: 6px 12px;
+      border-bottom: 1px solid #d1d7db;
+    }
+    .search-bar-container input {
+      width: 100%;
+      padding: 6px 12px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      outline: none;
+      font-size: 0.85rem;
     }
 
     /* Modal de Fondo */
@@ -211,7 +224,6 @@
     }
 
     .bg-modal h3 { font-size: 0.9rem; color: var(--wa-text); }
-    
     .bg-modal button, .bg-modal label {
       background: #f0f2f5;
       border: 1px solid #d1d7db;
@@ -230,13 +242,10 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       background-color: var(--wa-bg);
       background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
       background-size: 16px 16px;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-size: cover;
       touch-action: pan-y;
     }
 
@@ -259,16 +268,61 @@
       align-self: flex-end;
     }
 
+    .message.highlight {
+      background: #fde047 !important;
+    }
+
     .message .sender-name {
       font-size: 0.75rem;
       font-weight: bold;
       color: #e542a3;
       margin-bottom: 2px;
     }
-
     .message.mine .sender-name { display: none; }
 
-    /* Cita / Respondiendo */
+    /* Reacciones */
+    .reactions-bar-badge {
+      position: absolute;
+      bottom: -10px;
+      right: 8px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 1px 5px;
+      font-size: 0.75rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      display: flex;
+      gap: 2px;
+    }
+
+    .quick-reactions-popup {
+      display: none;
+      position: absolute;
+      top: -36px;
+      left: 0;
+      background: #fff;
+      border-radius: 20px;
+      padding: 4px 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 15;
+      gap: 6px;
+    }
+    .quick-reactions-popup span {
+      cursor: pointer;
+      font-size: 1rem;
+      transition: transform 0.1s;
+    }
+    .quick-reactions-popup span:hover { transform: scale(1.3); }
+
+    /* Doble Check */
+    .check-mark {
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: var(--wa-muted);
+    }
+    .check-mark.read {
+      color: #53bdeb;
+    }
+
     .quoted-box {
       background: rgba(0,0,0,0.06);
       border-left: 4px solid var(--wa-teal);
@@ -280,7 +334,6 @@
     .quoted-user { font-weight: bold; color: var(--wa-teal); }
     .quoted-text { color: var(--wa-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Control Fijo de Imágenes */
     .chat-media-img {
       display: block;
       width: 100%;
@@ -291,7 +344,6 @@
       margin-top: 4px;
     }
 
-    /* Videonota Circular en Mensaje */
     .video-note-container {
       width: 190px;
       height: 190px;
@@ -305,16 +357,8 @@
       justify-content: center;
     }
 
-    .video-note-container video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .chat-audio-player {
-      margin-top: 4px;
-      max-width: 240px;
-    }
+    .video-note-container video { width: 100%; height: 100%; object-fit: cover; }
+    .chat-audio-player { margin-top: 4px; max-width: 240px; }
 
     .message .time {
       font-size: 0.65rem;
@@ -322,13 +366,6 @@
       float: right;
       margin-top: 4px;
       margin-left: 10px;
-    }
-
-    .edited-mark {
-      font-size: 0.65rem;
-      color: var(--wa-muted);
-      font-style: italic;
-      margin-right: 4px;
     }
 
     .msg-actions-btn {
@@ -342,10 +379,7 @@
       cursor: pointer;
       display: none;
     }
-
-    .message:hover .msg-actions-btn {
-      display: block;
-    }
+    .message:hover .msg-actions-btn { display: block; }
 
     .msg-menu {
       display: none;
@@ -358,7 +392,6 @@
       z-index: 10;
       overflow: hidden;
     }
-
     .msg-menu button {
       display: block;
       width: 100%;
@@ -380,14 +413,8 @@
       align-items: center;
       font-size: 0.8rem;
     }
-    .reply-preview-bar .close-reply {
-      background: transparent;
-      border: none;
-      font-size: 1.1rem;
-      cursor: pointer;
-    }
+    .reply-preview-bar .close-reply { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; }
 
-    /* 1. MÁS GRANDE: Previsualización de Videonota al Grabar (200px) */
     .video-recording-overlay {
       display: none;
       position: absolute;
@@ -403,12 +430,7 @@
       background: #000;
       box-shadow: 0 6px 25px rgba(0,0,0,0.5);
     }
-
-    .video-recording-overlay video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+    .video-recording-overlay video { width: 100%; height: 100%; object-fit: cover; }
 
     .input-area {
       padding: 8px 12px;
@@ -466,11 +488,7 @@
       font-size: 1.1rem;
     }
 
-    .recording {
-      color: #ea4335 !important;
-      animation: pulse 1s infinite;
-    }
-
+    .recording { color: #ea4335 !important; animation: pulse 1s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
   </style>
 </head>
@@ -500,20 +518,24 @@
       <div class="header-details">
         <h2 id="activeRoomTitle">Nombre Sala</h2>
         <div class="typing-indicator" id="typingLabel"></div>
+        <div class="online-indicator" id="onlineLabel"></div>
       </div>
       
       <div class="header-actions">
+        <button class="btn-header" id="searchBtn" title="Buscar mensaje">🔍</button>
         <button class="btn-header" id="themeBtn" title="Cambiar Fondo del Chat">🎨</button>
-        <button class="btn-header" id="notifyBtn" title="Activar Notificaciones">🔔</button>
       </div>
     </div>
 
-    <!-- Visor de Grabación de Videonota (200px) -->
+    <!-- Buscador en Chat -->
+    <div class="search-bar-container" id="searchContainer">
+      <input type="text" id="searchInput" placeholder="Buscar texto en el chat...">
+    </div>
+
     <div class="video-recording-overlay" id="videoOverlay">
       <video id="videoPreview" autoplay playsinline muted></video>
     </div>
 
-    <!-- Modal de Selección de Fondo -->
     <div class="bg-modal" id="bgModal">
       <h3>Cambiar Fondo de Chat</h3>
       <label for="bgFileInput">🖼️ Subir desde Galería</label>
@@ -525,7 +547,6 @@
 
     <div class="messages-box" id="messagesBox"></div>
 
-    <!-- Barra de Respuesta a Mensaje -->
     <div class="reply-preview-bar" id="replyPreviewBar">
       <div>
         <strong id="replyUserLabel"></strong>: <span id="replyTextLabel"></span>
@@ -539,9 +560,7 @@
         <input type="file" id="imageInput" accept="image/*" style="display:none;">
       </label>
 
-      <!-- Alternador Modo Audio / Video -->
       <button class="btn-mode-toggle" id="toggleModeBtn" title="Cambiar modo Audio / Videonota">🎤</button>
-      
       <button class="btn-icon-wa" id="recBtn" title="Grabar nota">🎤</button>
 
       <input type="text" id="messageInput" placeholder="Escribe un mensaje" autocomplete="off">
@@ -575,7 +594,10 @@
   const replyUserLabel = document.getElementById('replyUserLabel');
   const replyTextLabel = document.getElementById('replyTextLabel');
   const typingLabel = document.getElementById('typingLabel');
-  const notifyBtn = document.getElementById('notifyBtn');
+  const onlineLabel = document.getElementById('onlineLabel');
+  const searchBtn = document.getElementById('searchBtn');
+  const searchContainer = document.getElementById('searchContainer');
+  const searchInput = document.getElementById('searchInput');
 
   const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
@@ -599,6 +621,29 @@
       toggleModeBtn.textContent = '🎤';
       recBtn.textContent = '🎤';
     }
+  });
+
+  // 1. BUSCADOR EN EL CHAT
+  searchBtn.addEventListener('click', () => {
+    searchContainer.style.display = searchContainer.style.display === 'block' ? 'none' : 'block';
+    if (searchContainer.style.display === 'block') searchInput.focus();
+  });
+
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    const allMsgs = messagesBox.querySelectorAll('.message');
+    
+    allMsgs.forEach(msg => {
+      const textSpan = msg.querySelector('.msg-text');
+      if (textSpan) {
+        const text = textSpan.textContent.toLowerCase();
+        if (query !== '' && text.includes(query)) {
+          msg.classList.add('highlight');
+        } else {
+          msg.classList.remove('highlight');
+        }
+      }
+    });
   });
 
   function applySavedBackground() {
@@ -713,7 +758,8 @@
     conversationScreen.style.display = 'flex';
 
     applySavedBackground();
-    socket.emit('joinRoom', roomName);
+    socket.emit('joinRoom', { room: roomName, user: nicknameInput.value.trim() });
+    socket.emit('markAsRead', { room: roomName, user: nicknameInput.value.trim() });
   }
 
   function closeChat() {
@@ -722,57 +768,20 @@
     conversationScreen.style.display = 'none';
     chatsListScreen.style.display = 'flex';
     bgModal.style.display = 'none';
+    searchContainer.style.display = 'none';
     cancelReply();
   }
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.error(err));
-  }
-
-  function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  }
-
-  async function subscribePush() {
-    if (!('Notification' in window) || !('serviceWorker' in navigator) || !activeRoom) return;
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const response = await fetch('/vapidPublicKey');
-      const vapidPublicKey = await response.text();
-
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-      });
-
-      await fetch('/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription, socketId: socket.id, room: activeRoom })
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  notifyBtn.addEventListener('click', async () => {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      await subscribePush();
-      alert(`Notificaciones Push activadas para #${activeRoom}`);
-    }
+  // 2. PRESENCIA EN LÍNEA
+  socket.on('onlineStatus', (users) => {
+    const count = users.length;
+    onlineLabel.textContent = count > 1 ? `${count} personas en línea` : 'En línea';
   });
 
   socket.on('loadHistory', (history) => {
     messagesBox.innerHTML = '';
     history.forEach(data => renderMessage(data, false));
+    socket.emit('markAsRead', { room: activeRoom, user: nicknameInput.value.trim() });
   });
 
   function sendMessage() {
@@ -798,20 +807,49 @@
     }
   });
 
+  // 3. COMPRESIÓN LIGERA DE FOTOS ANTES DE ENVIAR (CANVAS)
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     const user = nicknameInput.value.trim() || 'Anónimo';
     if (file && activeRoom) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        socket.emit('sendMessage', {
-          room: activeRoom,
-          user,
-          file: evt.target.result,
-          fileType: 'image',
-          replyTo: currentReply
-        });
-        cancelReply();
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1000;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height *= maxDim / width;
+              width = maxDim;
+            } else {
+              width *= maxDim / height;
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Compresión al 70% JPEG
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+          socket.emit('sendMessage', {
+            room: activeRoom,
+            user,
+            file: compressedDataUrl,
+            fileType: 'image',
+            replyTo: currentReply
+          });
+          cancelReply();
+        };
+        img.src = evt.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -908,6 +946,13 @@
     }
   }
 
+  // 4. REACCIONES RÁPIDAS
+  function sendReaction(messageId, emoji) {
+    const user = nicknameInput.value.trim();
+    socket.emit('toggleReaction', { messageId, room: activeRoom, user, emoji });
+    document.querySelectorAll('.quick-reactions-popup').forEach(p => p.style.display = 'none');
+  }
+
   function toggleMenu(menuId) {
     const menu = document.getElementById(menuId);
     document.querySelectorAll('.msg-menu').forEach(m => {
@@ -916,20 +961,26 @@
     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
   }
 
+  function toggleReactionsPopup(popupId) {
+    const popup = document.getElementById(popupId);
+    document.querySelectorAll('.quick-reactions-popup').forEach(p => {
+      if (p !== popup) p.style.display = 'none';
+    });
+    popup.style.display = popup.style.display === 'flex' ? 'none' : 'flex';
+  }
+
   document.addEventListener('click', (e) => {
-    if (!e.target.classList.contains('msg-actions-btn')) {
+    if (!e.target.classList.contains('msg-actions-btn') && !e.target.closest('.quick-reactions-popup')) {
       document.querySelectorAll('.msg-menu').forEach(m => m.style.display = 'none');
+      document.querySelectorAll('.quick-reactions-popup').forEach(p => p.style.display = 'none');
     }
   });
 
-  /* RENDERIZADOR DE MENSAJES CORREGIDO */
   function renderMessage(data, playAlerts = true) {
     const myName = nicknameInput.value.trim();
     const isMine = data.user === myName;
     const textContent = data.message || data.text || '';
     const msgId = data._id;
-
-    /* 2. RESOLUCIÓN DE ERROR EN PROPIO EMISOR: Acepta 'file' o 'fileUrl' indistintamente */
     const mediaSrc = data.file || data.fileUrl || '';
 
     const msgDiv = document.createElement('div');
@@ -941,9 +992,21 @@
 
     if (msgId) {
       const menuId = `menu-${msgId}`;
+      const popupId = `reactions-${msgId}`;
+
       contentHtml += `
+        <!-- Popup Reacciones -->
+        <div class="quick-reactions-popup" id="${popupId}">
+          <span onclick="sendReaction('${msgId}', '❤️')">❤️</span>
+          <span onclick="sendReaction('${msgId}', '👍')">👍</span>
+          <span onclick="sendReaction('${msgId}', '😂')">😂</span>
+          <span onclick="sendReaction('${msgId}', '😮')">😮</span>
+          <span onclick="sendReaction('${msgId}', '😢')">😢</span>
+        </div>
+
         <button class="msg-actions-btn" onclick="toggleMenu('${menuId}')">⋮</button>
         <div class="msg-menu" id="${menuId}">
+          <button onclick="toggleReactionsPopup('${popupId}')">😍 Reaccionar</button>
           <button onclick="setReply('${data.user}', '${textContent.replace(/'/g, "\\'")}')">↩️ Responder</button>
           ${isMine && textContent ? `<button onclick="triggerEdit('${msgId}', '${textContent.replace(/'/g, "\\'")}')">✏️ Editar</button>` : ''}
           ${isMine ? `<button onclick="triggerDelete('${msgId}')" style="color:#ef4444;">🗑️ Borrar</button>` : ''}
@@ -983,9 +1046,27 @@
         </div>
       `;
     }
+
+    // Badge Reacciones
+    let reactionsList = '';
+    if (data.reactions) {
+      const reactionObj = data.reactions instanceof Map ? Object.fromEntries(data.reactions) : data.reactions;
+      const emojiValues = Object.values(reactionObj);
+      if (emojiValues.length > 0) {
+        reactionsList = `<div class="reactions-bar-badge" id="react-badge-${msgId}">${Array.from(new Set(emojiValues)).join('')} ${emojiValues.length}</div>`;
+      }
+    }
+    contentHtml += reactionsList;
     
+    // 5. DOBLE CHECK AZUL / GRIS
     const timeDisplay = data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const checkmark = isMine ? ' <span style="color:#53bdeb;">✓✓</span>' : '';
+    let checkmark = '';
+    if (isMine) {
+      const isRead = data.readBy && data.readBy.length > 1;
+      const readClass = isRead ? 'read' : '';
+      checkmark = ` <span class="check-mark ${readClass}" id="check-${msgId}">✓✓</span>`;
+    }
+
     contentHtml += `<div class="time">${timeDisplay}${checkmark}</div>`;
     
     msgDiv.innerHTML = contentHtml;
@@ -994,12 +1075,38 @@
 
     if (playAlerts && !isMine) {
       notifySound.play().catch(() => {});
+      socket.emit('markAsRead', { room: activeRoom, user: nicknameInput.value.trim() });
     }
   }
 
   socket.on('newMessage', (data) => {
     if (data.room === activeRoom) {
       renderMessage(data, true);
+    }
+  });
+
+  socket.on('messagesRead', () => {
+    document.querySelectorAll('.check-mark').forEach(chk => chk.classList.add('read'));
+  });
+
+  socket.on('reactionUpdated', ({ messageId, reactions }) => {
+    const msgElement = document.getElementById(`msg-${messageId}`);
+    if (msgElement) {
+      let badge = msgElement.querySelector('.reactions-bar-badge');
+      const emojiValues = Object.values(reactions);
+      
+      if (emojiValues.length > 0) {
+        const text = `${Array.from(new Set(emojiValues)).join('')} ${emojiValues.length}`;
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'reactions-bar-badge';
+          badge.id = `react-badge-${messageId}`;
+          msgElement.appendChild(badge);
+        }
+        badge.textContent = text;
+      } else if (badge) {
+        badge.remove();
+      }
     }
   });
 
