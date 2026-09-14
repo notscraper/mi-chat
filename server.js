@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-  maxHttpBufferSize: 1e7 // Límite de 10MB
+  maxHttpBufferSize: 1e7 // Límite de 10MB para multimedia
 });
 const path = require('path');
 const mongoose = require('mongoose');
@@ -22,7 +22,7 @@ webpush.setVapidDetails(
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/chat_db?retryWrites=true&w=majority";
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('Conectado a MongoDB Atlas'))
+  .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
   .catch((err) => console.error('Error al conectar con MongoDB:', err));
 
 // Esquema de Mensajes por Sala
@@ -36,7 +36,7 @@ const messageSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Esquema de Suscripciones Push asociado al Socket y a la Sala
+// Esquema de Suscripciones Web Push asociadas al Socket y Sala
 const subscriptionSchema = new mongoose.Schema({
   endpoint: { type: String, unique: true },
   socketId: String,
@@ -53,7 +53,7 @@ app.get('/vapidPublicKey', (req, res) => {
   res.send(vapidKeys.publicKey);
 });
 
-// Guardar suscripción Push asociada al socket actual y a la sala
+// Registrar o actualizar suscripción Push
 app.post('/subscribe', async (req, res) => {
   try {
     const { subscription, socketId, room } = req.body;
@@ -73,6 +73,7 @@ io.on('connection', (socket) => {
   let currentRoom = '';
 
   socket.on('joinRoom', async (roomId) => {
+    if (!roomId) return;
     if (currentRoom) socket.leave(currentRoom);
     currentRoom = roomId;
     socket.join(roomId);
@@ -106,6 +107,7 @@ io.on('connection', (socket) => {
         await newMsg.save();
 
         io.to(data.room).emit('newMessage', {
+          room: data.room,
           user: userStr,
           message: textStr,
           file: fileData,
@@ -113,7 +115,7 @@ io.on('connection', (socket) => {
           time: timeStr
         });
 
-        // Buscar suscripciones en esta sala excluyendo el socket actual del emisor
+        // Notificar a las suscripciones activas en esta misma sala (menos al remitente)
         const subscriptions = await Subscription.find({ 
           room: data.room, 
           socketId: { $ne: socket.id } 
@@ -127,8 +129,8 @@ io.on('connection', (socket) => {
         }
 
         const payload = JSON.stringify({
-          title: `Nuevo mensaje de ${userStr}`,
-          body: bodyText
+          title: `Mensaje en ${data.room}`,
+          body: `${userStr}: ${bodyText}`
         });
 
         subscriptions.forEach(sub => {
