@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
   <title>WhatsApp Web</title>
   <style>
     :root {
@@ -19,29 +19,40 @@
       box-sizing: border-box; 
       margin: 0; 
       padding: 0; 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      touch-action: pan-x pan-y; /* Previene gestos de zoom de pellizco en dispositivos móviles */
     }
     
     html, body {
-      touch-action: manipulation;
       height: 100vh;
+      width: 100vw;
       background: #d1d7db;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden; /* Evita scroll indeseado en la página general */
+      touch-action: none; /* Fija la escala sin zoom táctil */
     }
 
     .chat-container {
       width: 100%;
       max-width: 480px;
-      height: 95vh;
+      height: 100vh;
+      max-height: 100vh;
       background: var(--wa-bg);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      border-radius: 12px;
       position: relative;
+    }
+
+    @media (min-width: 481px) {
+      .chat-container {
+        height: 95vh;
+        max-height: 95vh;
+        border-radius: 12px;
+      }
     }
 
     /* VISTA 1: Lista de Chats */
@@ -83,9 +94,8 @@
       border-bottom: 1px solid #e0e0e0;
     }
 
-    .btn-create-chat {
+    .btn-create-chat, .btn-join-chat {
       flex: 1;
-      background: var(--wa-teal);
       color: #fff;
       border: none;
       padding: 8px 12px;
@@ -94,18 +104,8 @@
       font-size: 0.85rem;
       cursor: pointer;
     }
-
-    .btn-join-chat {
-      flex: 1;
-      background: #334155;
-      color: #fff;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-    }
+    .btn-create-chat { background: var(--wa-teal); }
+    .btn-join-chat { background: #334155; }
 
     .chats-list {
       flex: 1;
@@ -237,10 +237,12 @@
       background-position: center;
       background-repeat: no-repeat;
       background-size: cover;
+      touch-action: pan-y;
     }
 
+    /* BURBUJA DE MENSAJE */
     .message {
-      max-width: 78%;
+      max-width: 80%;
       padding: 6px 10px 8px 10px;
       border-radius: 7.5px;
       font-size: 0.9rem;
@@ -278,7 +280,18 @@
     .quoted-user { font-weight: bold; color: var(--wa-teal); }
     .quoted-text { color: var(--wa-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Estilo de Videonota Circular de WhatsApp */
+    /* --- CONTROL FIJO DE IMÁGENES (CORRECCIÓN DE TAMAÑO) --- */
+    .chat-media-img {
+      display: block;
+      width: 100%;
+      max-width: 250px;       /* Ancho máximo proporcional */
+      max-height: 240px;      /* Altura máxima para no saturar la pantalla */
+      object-fit: cover;      /* Recorte limpio sin deformar */
+      border-radius: 6px;
+      margin-top: 4px;
+    }
+
+    /* Videonota Circular estilo WhatsApp */
     .video-note-container {
       width: 180px;
       height: 180px;
@@ -354,7 +367,7 @@
     }
     .msg-menu button:hover { background: #f0f2f5; }
 
-    /* Barra de Previsualización al Responder */
+    /* Barra de Respuesta a Mensaje */
     .reply-preview-bar {
       display: none;
       background: #e9edef;
@@ -371,7 +384,7 @@
       cursor: pointer;
     }
 
-    /* Vista previa flotante para grabar videonota */
+    /* Grabación Videonota Float */
     .video-recording-overlay {
       display: none;
       position: absolute;
@@ -412,7 +425,7 @@
       color: var(--wa-text);
       border-radius: 20px;
       outline: none;
-      font-size: 16px !important;
+      font-size: 16px !important; /* Previene auto-zoom de iOS al hacer focus */
     }
 
     .btn-icon-wa {
@@ -539,7 +552,6 @@
 <script>
   const socket = io();
 
-  // Elementos DOM principales
   const nicknameInput = document.getElementById('nicknameInput');
   const chatsListScreen = document.getElementById('chatsListScreen');
   const conversationScreen = document.getElementById('conversationScreen');
@@ -564,7 +576,6 @@
 
   const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-  // Apodo
   nicknameInput.value = localStorage.getItem('chat_nickname') || 'User_' + Math.floor(Math.random() * 899 + 100);
   nicknameInput.addEventListener('change', () => {
     localStorage.setItem('chat_nickname', nicknameInput.value.trim());
@@ -573,9 +584,8 @@
   let myRooms = JSON.parse(localStorage.getItem('my_chat_rooms') || '[]');
   let activeRoom = '';
   let currentReply = null;
-  let recordMode = 'audio'; // 'audio' o 'video'
+  let recordMode = 'audio';
 
-  // Alternar modo de grabación audio/videonota
   toggleModeBtn.addEventListener('click', () => {
     if (recordMode === 'audio') {
       recordMode = 'video';
@@ -588,7 +598,6 @@
     }
   });
 
-  // Aplicar fondo guardado
   function applySavedBackground() {
     const savedBg = localStorage.getItem('chat_custom_bg');
     if (savedBg) {
@@ -713,7 +722,6 @@
     cancelReply();
   }
 
-  // Notificaciones Web Push
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(err => console.error(err));
   }
@@ -764,7 +772,6 @@
     history.forEach(data => renderMessage(data, false));
   });
 
-  // Enviar mensaje
   function sendMessage() {
     const text = messageInput.value.trim();
     const user = nicknameInput.value.trim() || 'Anónimo';
@@ -788,7 +795,6 @@
     }
   });
 
-  // Enviar imágenes
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     const user = nicknameInput.value.trim() || 'Anónimo';
@@ -808,7 +814,6 @@
     }
   });
 
-  // Lógica para Grabar Audio y Videonotas
   let mediaRecorder;
   let recordedChunks = [];
   let isRecording = false;
@@ -872,7 +877,6 @@
     }
   });
 
-  // Funciones de Citar / Editar / Eliminar
   function setReply(user, text) {
     currentReply = { user, text: text || 'Archivo multimedia' };
     replyUserLabel.textContent = user;
@@ -912,7 +916,6 @@
     }
   });
 
-  // Renderizar Mensajes en Pantalla
   function renderMessage(data, playAlerts = true) {
     const myName = nicknameInput.value.trim();
     const isMine = data.user === myName;
@@ -926,7 +929,6 @@
 
     let contentHtml = '';
 
-    // Menú contextual para Citar, Editar y Eliminar
     if (msgId) {
       const menuId = `menu-${msgId}`;
       contentHtml += `
@@ -941,7 +943,6 @@
 
     contentHtml += `<div class="sender-name">${data.user}</div>`;
 
-    // Visualización de Cita
     if (data.replyTo && data.replyTo.user) {
       contentHtml += `
         <div class="quoted-box">
@@ -951,17 +952,20 @@
       `;
     }
 
-    // Texto y marca de editado
     if (textContent) {
       const editedBadge = data.isEdited ? `<span class="edited-mark">(editado)</span>` : '';
       contentHtml += `<span class="msg-text">${textContent}</span> ${editedBadge}`;
     }
 
-    // Archivos multimedia
-    if (data.fileType === 'image') contentHtml += `<br><img src="${data.file}" alt="Imagen">`;
-    if (data.fileType === 'audio') contentHtml += `<br><audio src="${data.file}" controls></audio>`;
+    /* Imagen con clase fijada .chat-media-img */
+    if (data.fileType === 'image') {
+      contentHtml += `<br><img class="chat-media-img" src="${data.file}" alt="Imagen">`;
+    }
+
+    if (data.fileType === 'audio') {
+      contentHtml += `<br><audio src="${data.file}" controls></audio>`;
+    }
     
-    // Videonota Circular estilo WhatsApp
     if (data.fileType === 'video') {
       contentHtml += `
         <br>
@@ -983,7 +987,6 @@
     }
   }
 
-  // Socket Events
   socket.on('newMessage', (data) => {
     if (data.room === activeRoom) {
       renderMessage(data, true);
