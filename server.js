@@ -5,15 +5,25 @@ const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 1e7 }); // Soporta adjuntos grandes
+
+// Aumentamos el límite para permitir el envío de audio, fotos y videonotas
+const io = new Server(server, { 
+  maxHttpBufferSize: 1e7 // 10MB
+});
 
 app.use(express.static('public'));
 
-// Conexión MongoDB (Asegúrate de colocar tu URI correcta)
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/chatapp';
-mongoose.connect(mongoURI)
-  .then(() => console.log('MongoDB Conectado'))
-  .catch(err => console.error('Error Mongo:', err));
+// Configuración de la conexión a MongoDB Atlas
+// Busca la variable de entorno en Render (MONGO_URI o MONGODB_URI)
+const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI;
+
+if (!mongoURI) {
+  console.error('❌ ATENCIÓN: No se encontró la variable de entorno MONGO_URI en Render.');
+} else {
+  mongoose.connect(mongoURI)
+    .then(() => console.log('✅ Conectado exitosamente a MongoDB Atlas'))
+    .catch(err => console.error('❌ Error de conexión a Mongo:', err.message));
+}
 
 // Esquema del Mensaje
 const MessageSchema = new mongoose.Schema({
@@ -26,7 +36,7 @@ const MessageSchema = new mongoose.Schema({
   time: String,
   isEdited: { type: Boolean, default: false },
   readBy: { type: [String], default: [] },
-  reactions: { type: Map, of: String, default: {} } // { "nombreUsuario": "👍" }
+  reactions: { type: Map, of: String, default: {} }
 });
 
 const Message = mongoose.model('Message', MessageSchema);
@@ -46,9 +56,13 @@ io.on('connection', (socket) => {
       .map(u => u.user);
     io.to(room).emit('onlineStatus', usersInRoom);
 
-    // Cargar historial
-    const history = await Message.find({ room }).sort({ _id: 1 });
-    socket.emit('loadHistory', history);
+    // Cargar historial de la sala
+    try {
+      const history = await Message.find({ room }).sort({ _id: 1 });
+      socket.emit('loadHistory', history);
+    } catch (err) {
+      console.error('Error al cargar historial:', err.message);
+    }
   });
 
   socket.on('sendMessage', async (data) => {
@@ -64,52 +78,75 @@ io.on('connection', (socket) => {
       readBy: [data.user]
     });
 
-    await newMsg.save();
+    try {
+      await newMsg.save();
+    } catch (err) {
+      console.error('Error al guardar mensaje en Mongo:', err.message);
+    }
+
     io.to(data.room).emit('newMessage', newMsg);
   });
 
   // Marcar Mensajes como Leídos (Doble Check Azul)
   socket.on('markAsRead', async ({ room, user }) => {
-    await Message.updateMany(
-      { room, readBy: { $ne: user } },
-      { $addToSet: { readBy: user } }
-    );
-    io.to(room).emit('messagesRead', { user });
+    try {
+      await Message.updateMany(
+        { room, readBy: { $ne: user } },
+        { $addToSet: { readBy: user } }
+      );
+      io.to(room).emit('messagesRead', { user });
+    } catch (err) {
+      console.error('Error al marcar leídos:', err.message);
+    }
   });
 
-  // Reacciones Rápidas
+  // Reacciones Rápidas (Emoji)
   socket.on('toggleReaction', async ({ messageId, room, user, emoji }) => {
-    const msg = await Message.findById(messageId);
-    if (msg) {
-      if (!msg.reactions) msg.reactions = new Map();
-      
-      if (msg.reactions.get(user) === emoji) {
-        msg.reactions.delete(user); // Quitar si presiona el mismo
-      } else {
-        msg.reactions.set(user, emoji); // Agregar o actualizar
+    try {
+      const msg = await Message.findById(messageId);
+      if (msg) {
+        if (!msg.reactions) msg.reactions = new Map();
+        
+        if (msg.reactions.get(user) === emoji) {
+          msg.reactions.delete(user); // Quita la reacción si toca el mismo emoji
+        } else {
+          msg.reactions.set(user, emoji); // Agrega o cambia la reacción
+        }
+        
+        await msg.save();
+        io.to(room).emit('reactionUpdated', { messageId, reactions: Object.fromEntries(msg.reactions) });
       }
-      
-      await msg.save();
-      io.to(room).emit('reactionUpdated', { messageId, reactions: Object.fromEntries(msg.reactions) });
+    } catch (err) {
+      console.error('Error en reacción:', err.message);
     }
   });
 
   // Editar Mensaje
   socket.on('editMessage', async ({ messageId, room, newText }) => {
-    await Message.findByIdAndUpdate(messageId, { message: newText, isEdited: true });
-    io.to(room).emit('messageEdited', { messageId, newText });
+    try {
+      await Message.findByIdAndUpdate(messageId, { message: newText, isEdited: true });
+      io.to(room).emit('messageEdited', { messageId, newText });
+    } catch (err) {
+      console.error('Error al editar:', err.message);
+    }
   });
 
   // Eliminar Mensaje
   socket.on('deleteMessage', async ({ messageId, room }) => {
-    await Message.findByIdAndDelete(messageId);
-    io.to(room).emit('messageDeleted', { messageId });
+    try {
+      await Message.findByIdAndDelete(messageId);
+      io.to(room).emit('messageDeleted', { messageId });
+    } catch (err) {
+      console.error('Error al borrar:', err.message);
+    }
   });
 
+  // Escribiendo...
   socket.on('typing', ({ room, user }) => {
     socket.to(room).emit('userTyping', user);
   });
 
+  // Desconexión
   socket.on('disconnect', () => {
     const userInfo = onlineUsers[socket.id];
     if (userInfo) {
@@ -122,5 +159,6 @@ io.on('connection', (socket) => {
   });
 });
 
+// El puerto asignado dinámicamente por Render o el 3000 por defecto
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`));
