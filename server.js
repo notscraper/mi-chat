@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-  maxHttpBufferSize: 1e7 // Límite de 10MB para multimedia
+  maxHttpBufferSize: 1e7 // Límite de 10MB para multimedia y videonotas
 });
 const path = require('path');
 const mongoose = require('mongoose');
@@ -31,7 +31,12 @@ const messageSchema = new mongoose.Schema({
   user: String,
   text: String,
   file: String,
-  fileType: String,
+  fileType: String, // 'image', 'audio', 'video'
+  replyTo: {
+    user: String,
+    text: String
+  },
+  isEdited: { type: Boolean, default: false },
   time: String,
   createdAt: { type: Date, default: Date.now }
 });
@@ -93,6 +98,7 @@ io.on('connection', (socket) => {
       const textStr = data.message || '';
       const fileData = data.file || null;
       const fileKind = data.fileType || null;
+      const replyData = data.replyTo || null;
 
       try {
         const newMsg = new Message({
@@ -101,21 +107,25 @@ io.on('connection', (socket) => {
           text: textStr,
           file: fileData,
           fileType: fileKind,
+          replyTo: replyData,
           time: timeStr
         });
 
-        await newMsg.save();
+        const savedMsg = await newMsg.save();
 
         io.to(data.room).emit('newMessage', {
+          _id: savedMsg._id,
           room: data.room,
           user: userStr,
           message: textStr,
           file: fileData,
           fileType: fileKind,
+          replyTo: replyData,
+          isEdited: false,
           time: timeStr
         });
 
-        // Notificar a las suscripciones activas en esta misma sala (menos al remitente)
+        // Notificar por Web Push
         const subscriptions = await Subscription.find({ 
           room: data.room, 
           socketId: { $ne: socket.id } 
@@ -125,6 +135,7 @@ io.on('connection', (socket) => {
         if (!bodyText) {
           if (fileKind === 'image') bodyText = '📷 Te envió una imagen';
           else if (fileKind === 'audio') bodyText = '🎤 Te envió una nota de voz';
+          else if (fileKind === 'video') bodyText = '📹 Te envió una videonota';
           else bodyText = 'Te envió un archivo multimedia';
         }
 
@@ -144,6 +155,37 @@ io.on('connection', (socket) => {
       } catch (err) {
         console.error('Error al procesar mensaje:', err);
       }
+    }
+  });
+
+  // Evento para Editar Mensaje
+  socket.on('editMessage', async (data) => {
+    try {
+      const { messageId, room, newText } = data;
+      const updated = await Message.findByIdAndUpdate(
+        messageId,
+        { text: newText, isEdited: true },
+        { new: true }
+      );
+      if (updated) {
+        io.to(room).emit('messageEdited', {
+          messageId: updated._id,
+          newText: updated.text
+        });
+      }
+    } catch (err) {
+      console.error('Error al editar mensaje:', err);
+    }
+  });
+
+  // Evento para Borrar Mensaje
+  socket.on('deleteMessage', async (data) => {
+    try {
+      const { messageId, room } = data;
+      await Message.findByIdAndDelete(messageId);
+      io.to(room).emit('messageDeleted', { messageId });
+    } catch (err) {
+      console.error('Error al eliminar mensaje:', err);
     }
   });
 
