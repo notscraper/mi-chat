@@ -70,7 +70,7 @@
       color: #fff;
       border-radius: 12px;
       padding: 4px 10px;
-      font-size: 16px !important; /* Previene el zoom en móviles */
+      font-size: 16px !important;
       width: 120px;
       outline: none;
     }
@@ -155,6 +155,7 @@
       flex-direction: column;
       height: 100%;
       width: 100%;
+      position: relative;
     }
 
     .header {
@@ -164,6 +165,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      z-index: 2;
     }
 
     .btn-back {
@@ -178,13 +180,52 @@
     .header-details h2 { font-size: 1rem; line-height: 1.2; }
     .typing-indicator { font-size: 0.75rem; color: #e9edef; font-style: italic; height: 14px; }
 
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
     .btn-header {
       background: transparent;
       border: none;
       color: #fff;
       font-size: 1.2rem;
       cursor: pointer;
-      margin-left: auto;
+    }
+
+    /* Modal / Menú para cambiar Fondo */
+    .bg-modal {
+      display: none;
+      position: absolute;
+      top: 50px;
+      right: 10px;
+      background: #ffffff;
+      padding: 14px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      z-index: 100;
+      width: 240px;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .bg-modal h3 { font-size: 0.9rem; color: var(--wa-text); }
+    
+    .bg-modal button, .bg-modal label {
+      background: #f0f2f5;
+      border: 1px solid #d1d7db;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: center;
+      color: var(--wa-text);
+      font-weight: 500;
+    }
+
+    .bg-modal label {
+      display: block;
     }
 
     .messages-box {
@@ -197,6 +238,10 @@
       background-color: var(--wa-bg);
       background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
       background-size: 16px 16px;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      transition: background 0.3s ease;
     }
 
     .message {
@@ -244,6 +289,7 @@
       gap: 8px;
       align-items: center;
       border-top: 1px solid #e0e0e0;
+      z-index: 2;
     }
 
     .input-area input[type="text"] {
@@ -254,7 +300,7 @@
       color: var(--wa-text);
       border-radius: 20px;
       outline: none;
-      font-size: 16px !important; /* Previene el zoom en móviles */
+      font-size: 16px !important;
     }
 
     .btn-icon-wa {
@@ -295,7 +341,7 @@
 
 <div class="chat-container">
 
-  <!-- VISTA 1: Lista de Chats (Almacenamiento propio por teléfono) -->
+  <!-- VISTA 1: Lista de Chats -->
   <div class="chats-list-screen" id="chatsListScreen">
     <div class="chats-header">
       <h2>WhatsApp</h2>
@@ -307,9 +353,7 @@
       <button class="btn-join-chat" onclick="joinExistingChat()">🔗 Unirse por Código</button>
     </div>
 
-    <div class="chats-list" id="chatsList">
-      <!-- Se carga dinámicamente según el celular -->
-    </div>
+    <div class="chats-list" id="chatsList"></div>
   </div>
 
   <!-- VISTA 2: Conversación Abierta -->
@@ -320,7 +364,21 @@
         <h2 id="activeRoomTitle">Nombre Sala</h2>
         <div class="typing-indicator" id="typingLabel"></div>
       </div>
-      <button class="btn-header" id="notifyBtn" title="Activar Notificaciones">🔔</button>
+      
+      <div class="header-actions">
+        <button class="btn-header" id="themeBtn" title="Cambiar Fondo del Chat">🎨</button>
+        <button class="btn-header" id="notifyBtn" title="Activar Notificaciones">🔔</button>
+      </div>
+    </div>
+
+    <!-- Menú Modal de Selección de Fondo -->
+    <div class="bg-modal" id="bgModal">
+      <h3>Cambiar Fondo de Chat</h3>
+      <label for="bgFileInput">🖼️ Subir desde Galería</label>
+      <input type="file" id="bgFileInput" accept="image/*" style="display:none;">
+      
+      <button onclick="promptBgUrl()">🔗 Pegar URL de Imagen</button>
+      <button onclick="resetDefaultBg()">↩️ Restablecer Original</button>
     </div>
 
     <div class="messages-box" id="messagesBox"></div>
@@ -344,8 +402,18 @@
 <script>
   const socket = io();
 
-  // Gestión de Apodo Personal
+  // Elementos principales
   const nicknameInput = document.getElementById('nicknameInput');
+  const chatsListScreen = document.getElementById('chatsListScreen');
+  const conversationScreen = document.getElementById('conversationScreen');
+  const chatsList = document.getElementById('chatsList');
+  const activeRoomTitle = document.getElementById('activeRoomTitle');
+  const messagesBox = document.getElementById('messagesBox');
+  const bgModal = document.getElementById('bgModal');
+  const themeBtn = document.getElementById('themeBtn');
+  const bgFileInput = document.getElementById('bgFileInput');
+
+  // Gestión de Apodo Personal
   nicknameInput.value = localStorage.getItem('chat_nickname') || 'User_' + Math.floor(Math.random() * 899 + 100);
   nicknameInput.addEventListener('change', () => {
     localStorage.setItem('chat_nickname', nicknameInput.value.trim());
@@ -355,12 +423,56 @@
   let myRooms = JSON.parse(localStorage.getItem('my_chat_rooms') || '[]');
   let activeRoom = '';
 
-  const chatsListScreen = document.getElementById('chatsListScreen');
-  const conversationScreen = document.getElementById('conversationScreen');
-  const chatsList = document.getElementById('chatsList');
-  const activeRoomTitle = document.getElementById('activeRoomTitle');
+  // Gestión del Fondo Personalizado
+  function applySavedBackground() {
+    const savedBg = localStorage.getItem('chat_custom_bg');
+    if (savedBg) {
+      messagesBox.style.backgroundImage = `url('${savedBg}')`;
+      messagesBox.style.backgroundSize = 'cover';
+      messagesBox.style.backgroundPosition = 'center';
+    } else {
+      messagesBox.style.backgroundImage = 'radial-gradient(#cbd5e1 1px, transparent 1px)';
+      messagesBox.style.backgroundSize = '16px 16px';
+    }
+  }
 
-  // Si abren por URL con hash directo, lo agrega automáticamente a la lista de este celular
+  themeBtn.addEventListener('click', () => {
+    bgModal.style.display = bgModal.style.display === 'flex' ? 'none' : 'flex';
+  });
+
+  // Cargar imagen desde Galería Local
+  bgFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const bgData = evt.target.result;
+        localStorage.setItem('chat_custom_bg', bgData);
+        applySavedBackground();
+        bgModal.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Aplicar fondo mediante URL externa
+  function promptBgUrl() {
+    const url = prompt('Ingresa la URL de la imagen de fondo:');
+    if (url && url.trim() !== '') {
+      localStorage.setItem('chat_custom_bg', url.trim());
+      applySavedBackground();
+      bgModal.style.display = 'none';
+    }
+  }
+
+  // Restablecer el fondo predeterminado estilo WhatsApp
+  function resetDefaultBg() {
+    localStorage.removeItem('chat_custom_bg');
+    applySavedBackground();
+    bgModal.style.display = 'none';
+  }
+
+  // Si se abre por URL con hash directo
   const initialHash = window.location.hash.substring(1);
   if (initialHash && !myRooms.includes(initialHash)) {
     myRooms.push(initialHash);
@@ -428,6 +540,8 @@
     chatsListScreen.style.display = 'none';
     conversationScreen.style.display = 'flex';
 
+    applySavedBackground();
+
     // Unirse a la sala en el servidor Socket.io
     socket.emit('joinRoom', roomName);
   }
@@ -437,6 +551,7 @@
     window.location.hash = '';
     conversationScreen.style.display = 'none';
     chatsListScreen.style.display = 'flex';
+    bgModal.style.display = 'none';
   }
 
   // Service Worker
@@ -457,7 +572,6 @@
     return outputArray;
   }
 
-  const messagesBox = document.getElementById('messagesBox');
   const messageInput = document.getElementById('messageInput');
   const sendBtn = document.getElementById('sendBtn');
   const imageInput = document.getElementById('imageInput');
@@ -617,6 +731,7 @@
   });
 
   renderChatsList();
+  applySavedBackground();
 </script>
 </body>
 </html>
