@@ -3,82 +3,233 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat Privado</title>
+  <title>WhatsApp Web</title>
   <style>
     :root {
-      --bg-primary: #0f172a;
-      --bg-card: #1e293b;
-      --bg-chat: #090d16;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --msg-mine: #1e40af;
-      --msg-other: #334155;
+      --wa-header-bg: #075e54;
+      --wa-teal: #128c7e;
+      --wa-bg: #efeae2;
+      --wa-msg-out: #dcf8c6;
+      --wa-msg-in: #ffffff;
+      --wa-text: #111b21;
+      --wa-muted: #667781;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background: var(--bg-primary); color: var(--text-main); height: 100vh; display: flex; align-items: center; justify-content: center; }
-    
-    .chat-container { width: 100%; max-width: 480px; height: 92vh; background: var(--bg-card); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #334155; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background: #d1d7db; height: 100vh; display: flex; align-items: center; justify-content: center; }
 
-    .header { background: var(--bg-card); padding: 14px 16px; border-bottom: 1px solid #334155; position: relative; display: flex; align-items: center; justify-content: space-between; }
-    .header-info h2 { font-size: 1.05rem; }
-    .room-tag { font-size: 0.75rem; color: var(--accent); font-weight: 600; margin-top: 2px; }
-    .typing-indicator { font-size: 0.75rem; color: var(--text-muted); height: 14px; }
+    .chat-container {
+      width: 100%;
+      max-width: 500px;
+      height: 95vh;
+      background: var(--wa-bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      border-radius: 8px;
+    }
 
-    .header-actions { display: flex; gap: 10px; align-items: center; }
-    .btn-action { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-main); }
-    .user-input-name { background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 8px; padding: 4px 8px; font-size: 0.8rem; width: 110px; outline: none; }
+    /* Cabecera estilo WhatsApp */
+    .header {
+      background: var(--wa-header-bg);
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
 
-    .messages-box { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: var(--bg-chat); }
-    .message { max-width: 80%; padding: 10px 14px; border-radius: 14px; font-size: 0.95rem; background: var(--msg-other); align-self: flex-start; word-wrap: break-word; }
-    .message.mine { background: var(--msg-mine); align-self: flex-end; }
-    .message .meta { font-size: 0.7rem; color: #cbd5e1; font-weight: bold; margin-bottom: 4px; }
-    .message .time { font-size: 0.65rem; color: var(--text-muted); text-align: right; margin-top: 4px; }
-    .message img { max-width: 100%; border-radius: 8px; margin-top: 6px; }
-    .message audio { max-width: 100%; margin-top: 6px; }
+    .header-user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-    .input-area { padding: 12px; background: var(--bg-card); display: flex; gap: 8px; align-items: center; border-top: 1px solid #334155; }
-    .input-area input[type="text"] { flex: 1; padding: 10px 14px; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 20px; outline: none; font-size: 0.9rem; }
-    
-    .btn-icon { background: #334155; color: #fff; border: none; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; font-size: 1.1rem; }
-    .btn-icon:hover { background: var(--accent); }
-    .btn-send { background: var(--accent); color: #fff; border: none; padding: 0 16px; height: 38px; border-radius: 20px; font-weight: bold; cursor: pointer; }
-    .btn-send:hover { background: var(--accent-hover); }
-    .btn-rec.recording { background: #ef4444; animation: pulse 1s infinite; }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      background-size: cover;
+    }
 
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    .header-details h2 { font-size: 1rem; font-weight: 600; line-height: 1.2; }
+    .header-details .room-tag { font-size: 0.75rem; color: #b5e4dd; }
+    .typing-indicator { font-size: 0.75rem; color: #e9edef; font-style: italic; height: 14px; }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .user-input-name {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      border-radius: 14px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      width: 105px;
+      outline: none;
+    }
+    .user-input-name::placeholder { color: #d0e4e1; }
+
+    .btn-header {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+    }
+
+    /* Área de Mensajes con textura clásica WhatsApp */
+    .messages-box {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background-color: var(--wa-bg);
+      /* Patrón visual sutil de fondo */
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+
+    .message {
+      max-width: 75%;
+      padding: 6px 10px 8px 10px;
+      border-radius: 7.5px;
+      font-size: 0.9rem;
+      background: var(--wa-msg-in);
+      color: var(--wa-text);
+      align-self: flex-start;
+      word-wrap: break-word;
+      position: relative;
+      box-shadow: 0 1px 0.5px rgba(11,20,26,0.13);
+    }
+
+    .message.mine {
+      background: var(--wa-msg-out);
+      align-self: flex-end;
+    }
+
+    .message .sender-name {
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #e542a3;
+      margin-bottom: 2px;
+    }
+
+    .message.mine .sender-name { display: none; }
+
+    .message .time {
+      font-size: 0.65rem;
+      color: var(--wa-muted);
+      float: right;
+      margin-top: 4px;
+      margin-left: 10px;
+    }
+
+    .message img { max-width: 100%; border-radius: 6px; margin-top: 4px; }
+    .message audio { max-width: 100%; margin-top: 4px; }
+
+    /* Área de entrada inferior */
+    .input-area {
+      padding: 8px 12px;
+      background: #f0f2f5;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .input-area input[type="text"] {
+      flex: 1;
+      padding: 9px 14px;
+      background: #ffffff;
+      border: none;
+      color: var(--wa-text);
+      border-radius: 20px;
+      outline: none;
+      font-size: 0.92rem;
+    }
+
+    .btn-icon-wa {
+      background: transparent;
+      color: #54656f;
+      border: none;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
+    .btn-send-wa {
+      background: var(--wa-teal);
+      color: #fff;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .btn-rec-wa.recording {
+      color: #ea4335;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
   </style>
 </head>
 <body>
 
 <div class="chat-container">
   <div class="header">
-    <div class="header-info">
-      <h2>💬 Chat Privado</h2>
-      <div class="room-tag" id="roomLabel">Cargando sala...</div>
-      <div class="typing-indicator" id="typingLabel"></div>
+    <div class="header-user-info">
+      <div class="avatar">🔒</div>
+      <div class="header-details">
+        <h2 id="headerTitle">Chat Privado</h2>
+        <div class="room-tag" id="roomLabel">Cargando sala...</div>
+        <div class="typing-indicator" id="typingLabel"></div>
+      </div>
     </div>
     <div class="header-actions">
-      <input type="text" class="user-input-name" id="usernameInput" placeholder="Tu apodo..." title="Cambia tu nombre aquí">
-      <button class="btn-action" id="notifyBtn" title="Activar Notificaciones">🔔</button>
-      <button class="btn-action" id="newRoomBtn" title="Crear nueva sala privada">➕</button>
+      <input type="text" class="user-input-name" id="usernameInput" placeholder="Tu nombre..." title="Edita tu apodo visible">
+      <button class="btn-header" id="notifyBtn" title="Activar Notificaciones">🔔</button>
+      <button class="btn-header" id="newRoomBtn" title="Nueva sala privada">➕</button>
     </div>
   </div>
 
   <div class="messages-box" id="messagesBox"></div>
 
   <div class="input-area">
-    <label class="btn-icon" title="Enviar Imagen">
+    <label class="btn-icon-wa" title="Adjuntar imagen">
       📷
       <input type="file" id="imageInput" accept="image/*" style="display:none;">
     </label>
 
-    <button class="btn-icon btn-rec" id="recBtn" title="Grabar Audio">🎤</button>
+    <button class="btn-icon-wa btn-rec-wa" id="recBtn" title="Grabar nota de voz">🎤</button>
 
-    <input type="text" id="messageInput" placeholder="Escribe un mensaje..." autocomplete="off">
-    <button class="btn-send" id="sendBtn">Enviar</button>
+    <input type="text" id="messageInput" placeholder="Escribe un mensaje" autocomplete="off">
+    <button class="btn-send-wa" id="sendBtn" title="Enviar">➤</button>
   </div>
 </div>
 
@@ -86,38 +237,36 @@
 <script>
   const socket = io();
 
-  // Nombre opcional guardado en local (sin listas ni perfiles predeterminados)
+  // Nombre de usuario personalizable
   const usernameInput = document.getElementById('usernameInput');
-  usernameInput.value = localStorage.getItem('chat_nickname') || 'Usuario_' + Math.floor(Math.random() * 8999 + 1000);
+  usernameInput.value = localStorage.getItem('chat_nickname') || 'Usuario_' + Math.floor(Math.random() * 899 + 100);
   
   usernameInput.addEventListener('change', () => {
     localStorage.setItem('chat_nickname', usernameInput.value.trim());
   });
 
-  // Generación/Lectura de Sala por Hash en la URL
+  // Generar o unirse a sala por hash de URL
   let room = window.location.hash.substring(1);
   if (!room) {
-    // Si entran al link limpio, crea una sala aleatoria única
-    room = 'sala-' + Math.random().toString(36).substring(2, 9);
+    room = 'sala-' + Math.random().toString(36).substring(2, 8);
     window.location.hash = room;
   }
-  document.getElementById('roomLabel').textContent = `#${room}`;
+  document.getElementById('roomLabel').textContent = `Enlace: #${room}`;
 
-  // Unirse a la sala indicada en la URL
   socket.emit('joinRoom', room);
 
-  // Botón para generar un nuevo chat independiente
+  // Botón para crear nuevo enlace de chat instantáneo
   document.getElementById('newRoomBtn').addEventListener('click', () => {
-    const newRoom = 'sala-' + Math.random().toString(36).substring(2, 9);
+    const newRoom = 'sala-' + Math.random().toString(36).substring(2, 8);
     window.location.hash = newRoom;
     window.location.reload();
   });
 
-  // Registrar Service Worker
+  // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker listo:', reg))
-      .catch(err => console.error('Error al registrar SW:', err));
+      .then(reg => console.log('SW activo:', reg))
+      .catch(err => console.error('Error SW:', err));
   }
 
   function urlBase64ToUint8Array(base64String) {
@@ -131,7 +280,6 @@
     return outputArray;
   }
 
-  // Elementos HTML
   const messagesBox = document.getElementById('messagesBox');
   const messageInput = document.getElementById('messageInput');
   const sendBtn = document.getElementById('sendBtn');
@@ -142,7 +290,7 @@
 
   const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-  // Notificaciones Web Push asociadas a la sala y socket actual
+  // Notificaciones Push por Sala
   async function subscribePush() {
     if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
     try {
@@ -165,7 +313,7 @@
         })
       });
     } catch (err) {
-      console.error('Error al suscribir notificaciones:', err);
+      console.error('Error Notificaciones:', err);
     }
   }
 
@@ -174,12 +322,10 @@
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         await subscribePush();
-        alert('¡Notificaciones Push activadas para esta sala!');
-      } else {
-        alert('Debes otorgar permisos en la configuración de tu dispositivo.');
+        alert('Notificaciones de WhatsApp activadas.');
       }
     } catch (err) {
-      console.error('Error:', err);
+      console.error(err);
     }
   });
 
@@ -259,14 +405,16 @@
     msgDiv.classList.add('message');
     if (isMine) msgDiv.classList.add('mine');
 
-    let contentHtml = `<div class="meta">${data.user}</div>`;
-    if (textContent) contentHtml += `<div class="text">${textContent}</div>`;
-    if (data.fileType === 'image') contentHtml += `<img src="${data.file}" alt="Imagen">`;
-    if (data.fileType === 'audio') contentHtml += `<audio src="${data.file}" controls></audio>`;
+    let contentHtml = `<div class="sender-name">${data.user}</div>`;
+    if (textContent) contentHtml += `<span>${textContent}</span>`;
+    if (data.fileType === 'image') contentHtml += `<br><img src="${data.file}" alt="Imagen">`;
+    if (data.fileType === 'audio') contentHtml += `<br><audio src="${data.file}" controls></audio>`;
     
-    contentHtml += `<div class="time">${data.time}</div>`;
+    // Incluye hora y palomita verde si es mensaje propio
+    const checkmark = isMine ? ' <span style="color:#53bdeb;">✓✓</span>' : '';
+    contentHtml += `<div class="time">${data.time}${checkmark}</div>`;
+    
     msgDiv.innerHTML = contentHtml;
-
     messagesBox.appendChild(msgDiv);
     messagesBox.scrollTop = messagesBox.scrollHeight;
 
