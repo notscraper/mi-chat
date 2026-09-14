@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-  maxHttpBufferSize: 1e7 // Límite de 10MB para multimedia
+  maxHttpBufferSize: 1e7 // Límite de 10MB
 });
 const path = require('path');
 const mongoose = require('mongoose');
@@ -10,7 +10,7 @@ const webpush = require('web-push');
 
 app.use(express.json());
 
-// Configuración de claves VAPID para Web Push
+// Claves VAPID para Web Push
 const vapidKeys = webpush.generateVAPIDKeys();
 webpush.setVapidDetails(
   'mailto:admin@chat.com',
@@ -22,14 +22,13 @@ webpush.setVapidDetails(
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://notscraper_db_user:hfhlekw18@cluster0.mqs5pzm.mongodb.net/chat_db?retryWrites=true&w=majority";
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('Conectado exitosamente a MongoDB Atlas'))
+  .then(() => console.log('Conectado a MongoDB Atlas'))
   .catch((err) => console.error('Error al conectar con MongoDB:', err));
 
-// Esquema de Mensajes con remitente y destinatario
+// Esquema de Mensajes por Sala
 const messageSchema = new mongoose.Schema({
   room: String,
-  sender: String,
-  receiver: String,
+  user: String,
   text: String,
   file: String,
   fileType: String,
@@ -37,10 +36,11 @@ const messageSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Esquema de Suscripciones ligado a cada usuario
+// Esquema de Suscripciones Push asociado al Socket y a la Sala
 const subscriptionSchema = new mongoose.Schema({
   endpoint: { type: String, unique: true },
-  user: String,
+  socketId: String,
+  room: String,
   keys: Object
 });
 
@@ -53,15 +53,13 @@ app.get('/vapidPublicKey', (req, res) => {
   res.send(vapidKeys.publicKey);
 });
 
-// Registrar o actualizar suscripción Web Push por usuario
+// Guardar suscripción Push asociada al socket actual y a la sala
 app.post('/subscribe', async (req, res) => {
   try {
-    const { subscription, user } = req.body;
-    if (!user) return res.status(400).json({ error: 'Usuario requerido' });
-
+    const { subscription, socketId, room } = req.body;
     await Subscription.findOneAndUpdate(
-      { user: user },
-      { endpoint: subscription.endpoint, keys: subscription.keys, user: user },
+      { endpoint: subscription.endpoint },
+      { ...subscription, socketId: socketId, room: room },
       { upsert: true, new: true }
     );
     res.status(201).json({ success: true });
@@ -74,13 +72,7 @@ app.post('/subscribe', async (req, res) => {
 io.on('connection', (socket) => {
   let currentRoom = '';
 
-  // Unirse a la sala 1 a 1 (ej. "Alex_Sofía")
-  socket.on('joinRoom', async ({ sender, receiver }) => {
-    if (!sender || !receiver) return;
-
-    // Generar un ID de sala único alfabético para ambos participantes
-    const roomId = [sender, receiver].sort().join('_');
-
+  socket.on('joinRoom', async (roomId) => {
     if (currentRoom) socket.leave(currentRoom);
     currentRoom = roomId;
     socket.join(roomId);
@@ -93,72 +85,69 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Enviar mensaje privado
   socket.on('sendMessage', async (data) => {
-    const { sender, receiver, message, file, fileType } = data;
-    if (!sender || !receiver) return;
+    if (data.room) {
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const userStr = data.user || 'Anónimo';
+      const textStr = data.message || '';
+      const fileData = data.file || null;
+      const fileKind = data.fileType || null;
 
-    const roomId = [sender, receiver].sort().join('_');
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const textStr = message || '';
-    const fileData = file || null;
-    const fileKind = fileType || null;
+      try {
+        const newMsg = new Message({
+          room: data.room,
+          user: userStr,
+          text: textStr,
+          file: fileData,
+          fileType: fileKind,
+          time: timeStr
+        });
 
-    try {
-      const newMsg = new Message({
-        room: roomId,
-        sender: sender,
-        receiver: receiver,
-        text: textStr,
-        file: fileData,
-        fileType: fileKind,
-        time: timeStr
-      });
+        await newMsg.save();
 
-      await newMsg.save();
+        io.to(data.room).emit('newMessage', {
+          user: userStr,
+          message: textStr,
+          file: fileData,
+          fileType: fileKind,
+          time: timeStr
+        });
 
-      // Transmitir solo a los integrantes de esta sala
-      io.to(roomId).emit('newMessage', {
-        sender: sender,
-        receiver: receiver,
-        text: textStr,
-        file: fileData,
-        fileType: fileKind,
-        time: timeStr
-      });
-
-      // Enviar Notificación Push EXCLUSIVAMENTE al destinatario
-      const destSubscription = await Subscription.findOne({ user: receiver });
-
-      if (destSubscription) {
+        // Buscar suscripciones en esta sala excluyendo el socket actual del emisor
+        const subscriptions = await Subscription.find({ 
+          room: data.room, 
+          socketId: { $ne: socket.id } 
+        });
+        
         let bodyText = textStr;
         if (!bodyText) {
           if (fileKind === 'image') bodyText = '📷 Te envió una imagen';
-          else if (fileKind === 'audio') bodyText = '🎤 Te envió un nota de voz';
+          else if (fileKind === 'audio') bodyText = '🎤 Te envió una nota de voz';
           else bodyText = 'Te envió un archivo multimedia';
         }
 
         const payload = JSON.stringify({
-          title: `${sender}`,
+          title: `Nuevo mensaje de ${userStr}`,
           body: bodyText
         });
 
-        webpush.sendNotification(destSubscription, payload).catch(err => {
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            Subscription.deleteOne({ endpoint: destSubscription.endpoint }).exec();
-          }
+        subscriptions.forEach(sub => {
+          webpush.sendNotification(sub, payload).catch(err => {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              Subscription.deleteOne({ endpoint: sub.endpoint }).exec();
+            }
+          });
         });
-      }
 
-    } catch (err) {
-      console.error('Error al procesar mensaje:', err);
+      } catch (err) {
+        console.error('Error al procesar mensaje:', err);
+      }
     }
   });
 
   socket.on('typing', (data) => {
-    if (data.sender && data.receiver) {
-      const roomId = [data.sender, data.receiver].sort().join('_');
-      socket.to(roomId).emit('userTyping', data.sender);
+    if (data.room) {
+      socket.to(data.room).emit('userTyping', data.user || 'Alguien');
     }
   });
 });
