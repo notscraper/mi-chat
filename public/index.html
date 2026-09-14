@@ -20,7 +20,7 @@
       margin: 0; 
       padding: 0; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      touch-action: pan-x pan-y; /* Previene gestos de zoom de pellizco en dispositivos móviles */
+      touch-action: pan-x pan-y;
     }
     
     html, body {
@@ -30,8 +30,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden; /* Evita scroll indeseado en la página general */
-      touch-action: none; /* Fija la escala sin zoom táctil */
+      overflow: hidden;
+      touch-action: none;
     }
 
     .chat-container {
@@ -280,21 +280,21 @@
     .quoted-user { font-weight: bold; color: var(--wa-teal); }
     .quoted-text { color: var(--wa-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* --- CONTROL FIJO DE IMÁGENES (CORRECCIÓN DE TAMAÑO) --- */
+    /* Control Fijo de Imágenes */
     .chat-media-img {
       display: block;
       width: 100%;
-      max-width: 250px;       /* Ancho máximo proporcional */
-      max-height: 240px;      /* Altura máxima para no saturar la pantalla */
-      object-fit: cover;      /* Recorte limpio sin deformar */
+      max-width: 250px;
+      max-height: 240px;
+      object-fit: cover;
       border-radius: 6px;
       margin-top: 4px;
     }
 
-    /* Videonota Circular estilo WhatsApp */
+    /* Videonota Circular en Mensaje */
     .video-note-container {
-      width: 180px;
-      height: 180px;
+      width: 190px;
+      height: 190px;
       border-radius: 50%;
       overflow: hidden;
       margin-top: 4px;
@@ -309,6 +309,11 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+
+    .chat-audio-player {
+      margin-top: 4px;
+      max-width: 240px;
     }
 
     .message .time {
@@ -326,7 +331,6 @@
       margin-right: 4px;
     }
 
-    /* Menú contextual del mensaje */
     .msg-actions-btn {
       position: absolute;
       top: 4px;
@@ -367,7 +371,6 @@
     }
     .msg-menu button:hover { background: #f0f2f5; }
 
-    /* Barra de Respuesta a Mensaje */
     .reply-preview-bar {
       display: none;
       background: #e9edef;
@@ -384,21 +387,21 @@
       cursor: pointer;
     }
 
-    /* Grabación Videonota Float */
+    /* 1. MÁS GRANDE: Previsualización de Videonota al Grabar (200px) */
     .video-recording-overlay {
       display: none;
       position: absolute;
-      bottom: 70px;
+      bottom: 80px;
       left: 50%;
       transform: translateX(-50%);
-      width: 140px;
-      height: 140px;
+      width: 200px;
+      height: 200px;
       border-radius: 50%;
-      border: 4px solid #ea4335;
+      border: 5px solid #ea4335;
       overflow: hidden;
-      z-index: 20;
+      z-index: 30;
       background: #000;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+      box-shadow: 0 6px 25px rgba(0,0,0,0.5);
     }
 
     .video-recording-overlay video {
@@ -425,7 +428,7 @@
       color: var(--wa-text);
       border-radius: 20px;
       outline: none;
-      font-size: 16px !important; /* Previene auto-zoom de iOS al hacer focus */
+      font-size: 16px !important;
     }
 
     .btn-icon-wa {
@@ -441,11 +444,11 @@
     }
 
     .btn-mode-toggle {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       background: #d1d7db;
       border: none;
       border-radius: 12px;
-      padding: 2px 6px;
+      padding: 4px 8px;
       cursor: pointer;
     }
 
@@ -505,7 +508,7 @@
       </div>
     </div>
 
-    <!-- Previsualización Cámara para Videonota -->
+    <!-- Visor de Grabación de Videonota (200px) -->
     <div class="video-recording-overlay" id="videoOverlay">
       <video id="videoPreview" autoplay playsinline muted></video>
     </div>
@@ -536,7 +539,7 @@
         <input type="file" id="imageInput" accept="image/*" style="display:none;">
       </label>
 
-      <!-- Selector de Modo Grabar Audio / Video -->
+      <!-- Alternador Modo Audio / Video -->
       <button class="btn-mode-toggle" id="toggleModeBtn" title="Cambiar modo Audio / Videonota">🎤</button>
       
       <button class="btn-icon-wa" id="recBtn" title="Grabar nota">🎤</button>
@@ -840,7 +843,10 @@
           videoOverlay.style.display = 'block';
         }
 
-        mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
         mediaRecorder.onstop = () => {
           const mimeType = recordMode === 'video' ? 'video/webm' : 'audio/webm';
           const blob = new Blob(recordedChunks, { type: mimeType });
@@ -916,15 +922,19 @@
     }
   });
 
+  /* RENDERIZADOR DE MENSAJES CORREGIDO */
   function renderMessage(data, playAlerts = true) {
     const myName = nicknameInput.value.trim();
     const isMine = data.user === myName;
     const textContent = data.message || data.text || '';
     const msgId = data._id;
 
+    /* 2. RESOLUCIÓN DE ERROR EN PROPIO EMISOR: Acepta 'file' o 'fileUrl' indistintamente */
+    const mediaSrc = data.file || data.fileUrl || '';
+
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message');
-    msgDiv.id = `msg-${msgId}`;
+    if (msgId) msgDiv.id = `msg-${msgId}`;
     if (isMine) msgDiv.classList.add('mine');
 
     let contentHtml = '';
@@ -957,26 +967,26 @@
       contentHtml += `<span class="msg-text">${textContent}</span> ${editedBadge}`;
     }
 
-    /* Imagen con clase fijada .chat-media-img */
-    if (data.fileType === 'image') {
-      contentHtml += `<br><img class="chat-media-img" src="${data.file}" alt="Imagen">`;
+    if (data.fileType === 'image' && mediaSrc) {
+      contentHtml += `<br><img class="chat-media-img" src="${mediaSrc}" alt="Imagen">`;
     }
 
-    if (data.fileType === 'audio') {
-      contentHtml += `<br><audio src="${data.file}" controls></audio>`;
+    if (data.fileType === 'audio' && mediaSrc) {
+      contentHtml += `<br><audio class="chat-audio-player" src="${mediaSrc}" controls></audio>`;
     }
     
-    if (data.fileType === 'video') {
+    if (data.fileType === 'video' && mediaSrc) {
       contentHtml += `
         <br>
         <div class="video-note-container">
-          <video src="${data.file}" controls autoplay loop muted playsinline></video>
+          <video src="${mediaSrc}" controls autoplay loop muted playsinline></video>
         </div>
       `;
     }
     
+    const timeDisplay = data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const checkmark = isMine ? ' <span style="color:#53bdeb;">✓✓</span>' : '';
-    contentHtml += `<div class="time">${data.time}${checkmark}</div>`;
+    contentHtml += `<div class="time">${timeDisplay}${checkmark}</div>`;
     
     msgDiv.innerHTML = contentHtml;
     messagesBox.appendChild(msgDiv);
