@@ -20,67 +20,150 @@
 
     .chat-container {
       width: 100%;
-      max-width: 500px;
+      max-width: 480px;
       height: 95vh;
       background: var(--wa-bg);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      border-radius: 8px;
+      border-radius: 12px;
+      position: relative;
     }
 
-    /* Cabecera estilo WhatsApp */
-    .header {
+    /* VISTA 1: Lista de Chats Guardados Localmente */
+    .chats-list-screen {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      background: #ffffff;
+    }
+
+    .chats-header {
       background: var(--wa-header-bg);
       color: #fff;
-      padding: 10px 16px;
+      padding: 12px 16px;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-      z-index: 10;
-    }
-
-    .header-user-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: #ccc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      background-size: cover;
-    }
-
-    .header-details h2 { font-size: 1rem; font-weight: 600; line-height: 1.2; }
-    .header-details .room-tag { font-size: 0.75rem; color: #b5e4dd; }
-    .typing-indicator { font-size: 0.75rem; color: #e9edef; font-style: italic; height: 14px; }
-
-    .header-actions {
-      display: flex;
-      gap: 8px;
       align-items: center;
     }
 
-    .user-input-name {
+    .chats-header h2 { font-size: 1.1rem; }
+
+    .user-nickname-input {
       background: rgba(255, 255, 255, 0.2);
       border: none;
       color: #fff;
-      border-radius: 14px;
+      border-radius: 12px;
       padding: 4px 10px;
       font-size: 0.8rem;
-      width: 105px;
+      width: 110px;
       outline: none;
     }
-    .user-input-name::placeholder { color: #d0e4e1; }
+
+    .actions-bar {
+      padding: 10px 16px;
+      background: #f0f2f5;
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .btn-create-chat {
+      flex: 1;
+      background: var(--wa-teal);
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .btn-join-chat {
+      flex: 1;
+      background: #334155;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .chats-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f2f5;
+      cursor: pointer;
+    }
+
+    .chat-item:hover { background: #f5f6f6; }
+
+    .chat-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #128c7e;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .chat-details { flex: 1; }
+    .chat-title { font-weight: 600; color: var(--wa-text); font-size: 0.95rem; }
+    .chat-sub { font-size: 0.75rem; color: var(--wa-muted); margin-top: 2px; }
+
+    .btn-delete-room {
+      background: transparent;
+      border: none;
+      color: #ef4444;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* VISTA 2: Conversación Abierta */
+    .conversation-screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+    }
+
+    .header {
+      background: var(--wa-header-bg);
+      color: #fff;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-back {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .header-details h2 { font-size: 1rem; line-height: 1.2; }
+    .typing-indicator { font-size: 0.75rem; color: #e9edef; font-style: italic; height: 14px; }
 
     .btn-header {
       background: transparent;
@@ -88,11 +171,9 @@
       color: #fff;
       font-size: 1.2rem;
       cursor: pointer;
-      padding: 4px;
-      border-radius: 50%;
+      margin-left: auto;
     }
 
-    /* Área de Mensajes con textura clásica WhatsApp */
     .messages-box {
       flex: 1;
       padding: 16px;
@@ -101,7 +182,6 @@
       flex-direction: column;
       gap: 6px;
       background-color: var(--wa-bg);
-      /* Patrón visual sutil de fondo */
       background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
       background-size: 16px 16px;
     }
@@ -144,7 +224,6 @@
     .message img { max-width: 100%; border-radius: 6px; margin-top: 4px; }
     .message audio { max-width: 100%; margin-top: 4px; }
 
-    /* Área de entrada inferior */
     .input-area {
       padding: 8px 12px;
       background: #f0f2f5;
@@ -202,65 +281,150 @@
 <body>
 
 <div class="chat-container">
-  <div class="header">
-    <div class="header-user-info">
-      <div class="avatar">🔒</div>
+
+  <!-- VISTA 1: Lista de Chats (Almacenamiento propio por teléfono) -->
+  <div class="chats-list-screen" id="chatsListScreen">
+    <div class="chats-header">
+      <h2>WhatsApp</h2>
+      <input type="text" class="user-nickname-input" id="nicknameInput" placeholder="Mi Apodo..." title="Cambia tu nombre aquí">
+    </div>
+
+    <div class="actions-bar">
+      <button class="btn-create-chat" onclick="createNewChat()">➕ Nuevo Chat</button>
+      <button class="btn-join-chat" onclick="joinExistingChat()">🔗 Unirse por Código</button>
+    </div>
+
+    <div class="chats-list" id="chatsList">
+      <!-- Se carga dinámicamente según el celular -->
+    </div>
+  </div>
+
+  <!-- VISTA 2: Conversación Abierta -->
+  <div class="conversation-screen" id="conversationScreen">
+    <div class="header">
+      <button class="btn-back" onclick="closeChat()">←</button>
       <div class="header-details">
-        <h2 id="headerTitle">Chat Privado</h2>
-        <div class="room-tag" id="roomLabel">Cargando sala...</div>
+        <h2 id="activeRoomTitle">Nombre Sala</h2>
         <div class="typing-indicator" id="typingLabel"></div>
       </div>
-    </div>
-    <div class="header-actions">
-      <input type="text" class="user-input-name" id="usernameInput" placeholder="Tu nombre..." title="Edita tu apodo visible">
       <button class="btn-header" id="notifyBtn" title="Activar Notificaciones">🔔</button>
-      <button class="btn-header" id="newRoomBtn" title="Nueva sala privada">➕</button>
+    </div>
+
+    <div class="messages-box" id="messagesBox"></div>
+
+    <div class="input-area">
+      <label class="btn-icon-wa" title="Adjuntar imagen">
+        📷
+        <input type="file" id="imageInput" accept="image/*" style="display:none;">
+      </label>
+
+      <button class="btn-icon-wa btn-rec-wa" id="recBtn" title="Grabar nota de voz">🎤</button>
+
+      <input type="text" id="messageInput" placeholder="Escribe un mensaje" autocomplete="off">
+      <button class="btn-send-wa" id="sendBtn" title="Enviar">➤</button>
     </div>
   </div>
 
-  <div class="messages-box" id="messagesBox"></div>
-
-  <div class="input-area">
-    <label class="btn-icon-wa" title="Adjuntar imagen">
-      📷
-      <input type="file" id="imageInput" accept="image/*" style="display:none;">
-    </label>
-
-    <button class="btn-icon-wa btn-rec-wa" id="recBtn" title="Grabar nota de voz">🎤</button>
-
-    <input type="text" id="messageInput" placeholder="Escribe un mensaje" autocomplete="off">
-    <button class="btn-send-wa" id="sendBtn" title="Enviar">➤</button>
-  </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
 
-  // Nombre de usuario personalizable
-  const usernameInput = document.getElementById('usernameInput');
-  usernameInput.value = localStorage.getItem('chat_nickname') || 'Usuario_' + Math.floor(Math.random() * 899 + 100);
-  
-  usernameInput.addEventListener('change', () => {
-    localStorage.setItem('chat_nickname', usernameInput.value.trim());
+  // Gestión de Apodo Personal
+  const nicknameInput = document.getElementById('nicknameInput');
+  nicknameInput.value = localStorage.getItem('chat_nickname') || 'User_' + Math.floor(Math.random() * 899 + 100);
+  nicknameInput.addEventListener('change', () => {
+    localStorage.setItem('chat_nickname', nicknameInput.value.trim());
   });
 
-  // Generar o unirse a sala por hash de URL
-  let room = window.location.hash.substring(1);
-  if (!room) {
-    room = 'sala-' + Math.random().toString(36).substring(2, 8);
-    window.location.hash = room;
+  // Gestión de Lista Local de Salas por Celular
+  let myRooms = JSON.parse(localStorage.getItem('my_chat_rooms') || '[]');
+  let activeRoom = '';
+
+  const chatsListScreen = document.getElementById('chatsListScreen');
+  const conversationScreen = document.getElementById('conversationScreen');
+  const chatsList = document.getElementById('chatsList');
+  const activeRoomTitle = document.getElementById('activeRoomTitle');
+
+  // Si abren por URL con hash directo, lo agrega automáticamente a la lista de este celular
+  const initialHash = window.location.hash.substring(1);
+  if (initialHash && !myRooms.includes(initialHash)) {
+    myRooms.push(initialHash);
+    saveRooms();
   }
-  document.getElementById('roomLabel').textContent = `Enlace: #${room}`;
 
-  socket.emit('joinRoom', room);
+  function saveRooms() {
+    localStorage.setItem('my_chat_rooms', JSON.stringify(myRooms));
+    renderChatsList();
+  }
 
-  // Botón para crear nuevo enlace de chat instantáneo
-  document.getElementById('newRoomBtn').addEventListener('click', () => {
-    const newRoom = 'sala-' + Math.random().toString(36).substring(2, 8);
-    window.location.hash = newRoom;
-    window.location.reload();
-  });
+  function renderChatsList() {
+    chatsList.innerHTML = '';
+    if (myRooms.length === 0) {
+      chatsList.innerHTML = `<div style="padding:20px; text-align:center; color:#667781; font-size:0.9rem;">No tienes chats aún.<br>Crea uno nuevo o únete con un código.</div>`;
+      return;
+    }
+
+    myRooms.forEach(roomName => {
+      const item = document.createElement('div');
+      item.classList.add('chat-item');
+      item.innerHTML = `
+        <div class="chat-avatar">💬</div>
+        <div class="chat-details" onclick="openChat('${roomName}')">
+          <div class="chat-title">#${roomName}</div>
+          <div class="chat-sub">Toca para abrir la conversación</div>
+        </div>
+        <button class="btn-delete-room" onclick="deleteRoom('${roomName}')" title="Eliminar este chat de mi teléfono">🗑️</button>
+      `;
+      chatsList.appendChild(item);
+    });
+  }
+
+  function createNewChat() {
+    const roomCode = 'sala-' + Math.random().toString(36).substring(2, 8);
+    myRooms.unshift(roomCode);
+    saveRooms();
+    openChat(roomCode);
+  }
+
+  function joinExistingChat() {
+    const code = prompt('Ingresa el nombre o código del chat al que te quieres unir:');
+    if (code) {
+      const cleanCode = code.replace('#', '').trim();
+      if (cleanCode && !myRooms.includes(cleanCode)) {
+        myRooms.unshift(cleanCode);
+        saveRooms();
+      }
+      if (cleanCode) openChat(cleanCode);
+    }
+  }
+
+  function deleteRoom(roomName) {
+    if (confirm(`¿Quitar el chat #${roomName} de la lista de este celular?`)) {
+      myRooms = myRooms.filter(r => r !== roomName);
+      saveRooms();
+    }
+  }
+
+  function openChat(roomName) {
+    activeRoom = roomName;
+    window.location.hash = roomName;
+    activeRoomTitle.textContent = `#${roomName}`;
+
+    chatsListScreen.style.display = 'none';
+    conversationScreen.style.display = 'flex';
+
+    // Unirse a la sala en el servidor Socket.io
+    socket.emit('joinRoom', roomName);
+  }
+
+  function closeChat() {
+    activeRoom = '';
+    window.location.hash = '';
+    conversationScreen.style.display = 'none';
+    chatsListScreen.style.display = 'flex';
+  }
 
   // Service Worker
   if ('serviceWorker' in navigator) {
@@ -290,9 +454,9 @@
 
   const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-  // Notificaciones Push por Sala
+  // Notificaciones Web Push por sala activa
   async function subscribePush() {
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !activeRoom) return;
     try {
       const reg = await navigator.serviceWorker.ready;
       const response = await fetch('/vapidPublicKey');
@@ -309,7 +473,7 @@
         body: JSON.stringify({
           subscription: subscription,
           socketId: socket.id,
-          room: room
+          room: activeRoom
         })
       });
     } catch (err) {
@@ -322,7 +486,7 @@
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         await subscribePush();
-        alert('Notificaciones de WhatsApp activadas.');
+        alert(`Notificaciones Push activadas para #${activeRoom}`);
       }
     } catch (err) {
       console.error(err);
@@ -336,9 +500,9 @@
 
   function sendMessage() {
     const text = messageInput.value.trim();
-    const user = usernameInput.value.trim() || 'Anónimo';
-    if (text !== '') {
-      socket.emit('sendMessage', { room, user, message: text });
+    const user = nicknameInput.value.trim() || 'Anónimo';
+    if (text !== '' && activeRoom) {
+      socket.emit('sendMessage', { room: activeRoom, user, message: text });
       messageInput.value = '';
     }
   }
@@ -346,16 +510,18 @@
   sendBtn.addEventListener('click', sendMessage);
   messageInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendMessage();
-    socket.emit('typing', { room, user: usernameInput.value.trim() });
+    if (activeRoom) {
+      socket.emit('typing', { room: activeRoom, user: nicknameInput.value.trim() });
+    }
   });
 
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
-    const user = usernameInput.value.trim() || 'Anónimo';
-    if (file) {
+    const user = nicknameInput.value.trim() || 'Anónimo';
+    if (file && activeRoom) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        socket.emit('sendMessage', { room, user, file: evt.target.result, fileType: 'image' });
+        socket.emit('sendMessage', { room: activeRoom, user, file: evt.target.result, fileType: 'image' });
       };
       reader.readAsDataURL(file);
     }
@@ -366,7 +532,9 @@
   let isRecording = false;
 
   recBtn.addEventListener('click', async () => {
-    const user = usernameInput.value.trim() || 'Anónimo';
+    const user = nicknameInput.value.trim() || 'Anónimo';
+    if (!activeRoom) return;
+
     if (!isRecording) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -378,7 +546,7 @@
           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
           const reader = new FileReader();
           reader.onload = (evt) => {
-            socket.emit('sendMessage', { room, user, file: evt.target.result, fileType: 'audio' });
+            socket.emit('sendMessage', { room: activeRoom, user, file: evt.target.result, fileType: 'audio' });
           };
           reader.readAsDataURL(audioBlob);
         };
@@ -397,7 +565,7 @@
   });
 
   function renderMessage(data, playAlerts = true) {
-    const myName = usernameInput.value.trim();
+    const myName = nicknameInput.value.trim();
     const isMine = data.user === myName;
     const textContent = data.message || data.text || '';
 
@@ -410,7 +578,6 @@
     if (data.fileType === 'image') contentHtml += `<br><img src="${data.file}" alt="Imagen">`;
     if (data.fileType === 'audio') contentHtml += `<br><audio src="${data.file}" controls></audio>`;
     
-    // Incluye hora y palomita verde si es mensaje propio
     const checkmark = isMine ? ' <span style="color:#53bdeb;">✓✓</span>' : '';
     contentHtml += `<div class="time">${data.time}${checkmark}</div>`;
     
@@ -424,7 +591,9 @@
   }
 
   socket.on('newMessage', (data) => {
-    renderMessage(data, true);
+    if (data.room === activeRoom) {
+      renderMessage(data, true);
+    }
   });
 
   let typingTimeout;
@@ -433,6 +602,8 @@
     clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => { typingLabel.textContent = ''; }, 2000);
   });
+
+  renderChatsList();
 </script>
 </body>
 </html>
