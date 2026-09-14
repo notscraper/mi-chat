@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>WhatsApp Web</title>
   <style>
     :root {
@@ -15,8 +15,21 @@
       --wa-muted: #667781;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background: #d1d7db; height: 100vh; display: flex; align-items: center; justify-content: center; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    }
+    
+    html, body {
+      touch-action: manipulation;
+      height: 100vh;
+      background: #d1d7db;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
     .chat-container {
       width: 100%;
@@ -57,8 +70,8 @@
       color: #fff;
       border-radius: 12px;
       padding: 4px 10px;
-      font-size: 0.8rem;
-      width: 110px;
+      font-size: 16px !important; /* Previene el zoom en móviles */
+      width: 120px;
       outline: none;
     }
 
@@ -241,7 +254,7 @@
       color: var(--wa-text);
       border-radius: 20px;
       outline: none;
-      font-size: 0.92rem;
+      font-size: 16px !important; /* Previene el zoom en móviles */
     }
 
     .btn-icon-wa {
