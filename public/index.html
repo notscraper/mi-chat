@@ -44,7 +44,7 @@
       position: relative;
     }
 
-    /* VISTA 1: Lista de Chats Guardados Localmente */
+    /* VISTA 1: Lista de Chats */
     .chats-list-screen {
       display: flex;
       flex-direction: column;
@@ -194,7 +194,7 @@
       cursor: pointer;
     }
 
-    /* Modal / Menú para cambiar Fondo */
+    /* Modal de Fondo */
     .bg-modal {
       display: none;
       position: absolute;
@@ -224,10 +224,6 @@
       font-weight: 500;
     }
 
-    .bg-modal label {
-      display: block;
-    }
-
     .messages-box {
       flex: 1;
       padding: 16px;
@@ -241,11 +237,10 @@
       background-position: center;
       background-repeat: no-repeat;
       background-size: cover;
-      transition: background 0.3s ease;
     }
 
     .message {
-      max-width: 75%;
+      max-width: 78%;
       padding: 6px 10px 8px 10px;
       border-radius: 7.5px;
       font-size: 0.9rem;
@@ -271,6 +266,38 @@
 
     .message.mine .sender-name { display: none; }
 
+    /* Cita / Respondiendo */
+    .quoted-box {
+      background: rgba(0,0,0,0.06);
+      border-left: 4px solid var(--wa-teal);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 0.78rem;
+    }
+    .quoted-user { font-weight: bold; color: var(--wa-teal); }
+    .quoted-text { color: var(--wa-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Estilo de Videonota Circular de WhatsApp */
+    .video-note-container {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      overflow: hidden;
+      margin-top: 4px;
+      border: 3px solid #128c7e;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .video-note-container video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
     .message .time {
       font-size: 0.65rem;
       color: var(--wa-muted);
@@ -279,14 +306,99 @@
       margin-left: 10px;
     }
 
-    .message img { max-width: 100%; border-radius: 6px; margin-top: 4px; }
-    .message audio { max-width: 100%; margin-top: 4px; }
+    .edited-mark {
+      font-size: 0.65rem;
+      color: var(--wa-muted);
+      font-style: italic;
+      margin-right: 4px;
+    }
+
+    /* Menú contextual del mensaje */
+    .msg-actions-btn {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      background: transparent;
+      border: none;
+      font-size: 0.8rem;
+      color: var(--wa-muted);
+      cursor: pointer;
+      display: none;
+    }
+
+    .message:hover .msg-actions-btn {
+      display: block;
+    }
+
+    .msg-menu {
+      display: none;
+      position: absolute;
+      top: 24px;
+      right: 6px;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      border-radius: 6px;
+      z-index: 10;
+      overflow: hidden;
+    }
+
+    .msg-menu button {
+      display: block;
+      width: 100%;
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      font-size: 0.75rem;
+      text-align: left;
+      cursor: pointer;
+    }
+    .msg-menu button:hover { background: #f0f2f5; }
+
+    /* Barra de Previsualización al Responder */
+    .reply-preview-bar {
+      display: none;
+      background: #e9edef;
+      padding: 6px 12px;
+      border-left: 4px solid var(--wa-teal);
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+    .reply-preview-bar .close-reply {
+      background: transparent;
+      border: none;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    /* Vista previa flotante para grabar videonota */
+    .video-recording-overlay {
+      display: none;
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 4px solid #ea4335;
+      overflow: hidden;
+      z-index: 20;
+      background: #000;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    .video-recording-overlay video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
     .input-area {
       padding: 8px 12px;
       background: #f0f2f5;
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
       border-top: 1px solid #e0e0e0;
       z-index: 2;
@@ -307,12 +419,21 @@
       background: transparent;
       color: #54656f;
       border: none;
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 4px;
+    }
+
+    .btn-mode-toggle {
+      font-size: 0.8rem;
+      background: #d1d7db;
+      border: none;
+      border-radius: 12px;
+      padding: 2px 6px;
+      cursor: pointer;
     }
 
     .btn-send-wa {
@@ -329,8 +450,8 @@
       font-size: 1.1rem;
     }
 
-    .btn-rec-wa.recording {
-      color: #ea4335;
+    .recording {
+      color: #ea4335 !important;
       animation: pulse 1s infinite;
     }
 
@@ -371,7 +492,12 @@
       </div>
     </div>
 
-    <!-- Menú Modal de Selección de Fondo -->
+    <!-- Previsualización Cámara para Videonota -->
+    <div class="video-recording-overlay" id="videoOverlay">
+      <video id="videoPreview" autoplay playsinline muted></video>
+    </div>
+
+    <!-- Modal de Selección de Fondo -->
     <div class="bg-modal" id="bgModal">
       <h3>Cambiar Fondo de Chat</h3>
       <label for="bgFileInput">🖼️ Subir desde Galería</label>
@@ -383,13 +509,24 @@
 
     <div class="messages-box" id="messagesBox"></div>
 
+    <!-- Barra de Respuesta a Mensaje -->
+    <div class="reply-preview-bar" id="replyPreviewBar">
+      <div>
+        <strong id="replyUserLabel"></strong>: <span id="replyTextLabel"></span>
+      </div>
+      <button class="close-reply" onclick="cancelReply()">✕</button>
+    </div>
+
     <div class="input-area">
       <label class="btn-icon-wa" title="Adjuntar imagen">
         📷
         <input type="file" id="imageInput" accept="image/*" style="display:none;">
       </label>
 
-      <button class="btn-icon-wa btn-rec-wa" id="recBtn" title="Grabar nota de voz">🎤</button>
+      <!-- Selector de Modo Grabar Audio / Video -->
+      <button class="btn-mode-toggle" id="toggleModeBtn" title="Cambiar modo Audio / Videonota">🎤</button>
+      
+      <button class="btn-icon-wa" id="recBtn" title="Grabar nota">🎤</button>
 
       <input type="text" id="messageInput" placeholder="Escribe un mensaje" autocomplete="off">
       <button class="btn-send-wa" id="sendBtn" title="Enviar">➤</button>
@@ -402,7 +539,7 @@
 <script>
   const socket = io();
 
-  // Elementos principales
+  // Elementos DOM principales
   const nicknameInput = document.getElementById('nicknameInput');
   const chatsListScreen = document.getElementById('chatsListScreen');
   const conversationScreen = document.getElementById('conversationScreen');
@@ -412,18 +549,46 @@
   const bgModal = document.getElementById('bgModal');
   const themeBtn = document.getElementById('themeBtn');
   const bgFileInput = document.getElementById('bgFileInput');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const imageInput = document.getElementById('imageInput');
+  const recBtn = document.getElementById('recBtn');
+  const toggleModeBtn = document.getElementById('toggleModeBtn');
+  const videoOverlay = document.getElementById('videoOverlay');
+  const videoPreview = document.getElementById('videoPreview');
+  const replyPreviewBar = document.getElementById('replyPreviewBar');
+  const replyUserLabel = document.getElementById('replyUserLabel');
+  const replyTextLabel = document.getElementById('replyTextLabel');
+  const typingLabel = document.getElementById('typingLabel');
+  const notifyBtn = document.getElementById('notifyBtn');
 
-  // Gestión de Apodo Personal
+  const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+
+  // Apodo
   nicknameInput.value = localStorage.getItem('chat_nickname') || 'User_' + Math.floor(Math.random() * 899 + 100);
   nicknameInput.addEventListener('change', () => {
     localStorage.setItem('chat_nickname', nicknameInput.value.trim());
   });
 
-  // Gestión de Lista Local de Salas por Celular
   let myRooms = JSON.parse(localStorage.getItem('my_chat_rooms') || '[]');
   let activeRoom = '';
+  let currentReply = null;
+  let recordMode = 'audio'; // 'audio' o 'video'
 
-  // Gestión del Fondo Personalizado
+  // Alternar modo de grabación audio/videonota
+  toggleModeBtn.addEventListener('click', () => {
+    if (recordMode === 'audio') {
+      recordMode = 'video';
+      toggleModeBtn.textContent = '📹';
+      recBtn.textContent = '📹';
+    } else {
+      recordMode = 'audio';
+      toggleModeBtn.textContent = '🎤';
+      recBtn.textContent = '🎤';
+    }
+  });
+
+  // Aplicar fondo guardado
   function applySavedBackground() {
     const savedBg = localStorage.getItem('chat_custom_bg');
     if (savedBg) {
@@ -440,14 +605,12 @@
     bgModal.style.display = bgModal.style.display === 'flex' ? 'none' : 'flex';
   });
 
-  // Cargar imagen desde Galería Local
   bgFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const bgData = evt.target.result;
-        localStorage.setItem('chat_custom_bg', bgData);
+        localStorage.setItem('chat_custom_bg', evt.target.result);
         applySavedBackground();
         bgModal.style.display = 'none';
       };
@@ -455,7 +618,6 @@
     }
   });
 
-  // Aplicar fondo mediante URL externa
   function promptBgUrl() {
     const url = prompt('Ingresa la URL de la imagen de fondo:');
     if (url && url.trim() !== '') {
@@ -465,14 +627,12 @@
     }
   }
 
-  // Restablecer el fondo predeterminado estilo WhatsApp
   function resetDefaultBg() {
     localStorage.removeItem('chat_custom_bg');
     applySavedBackground();
     bgModal.style.display = 'none';
   }
 
-  // Si se abre por URL con hash directo
   const initialHash = window.location.hash.substring(1);
   if (initialHash && !myRooms.includes(initialHash)) {
     myRooms.push(initialHash);
@@ -500,7 +660,7 @@
           <div class="chat-title">#${roomName}</div>
           <div class="chat-sub">Toca para abrir la conversación</div>
         </div>
-        <button class="btn-delete-room" onclick="deleteRoom('${roomName}')" title="Eliminar este chat de mi teléfono">🗑️</button>
+        <button class="btn-delete-room" onclick="deleteRoom('${roomName}')" title="Eliminar este chat">🗑️</button>
       `;
       chatsList.appendChild(item);
     });
@@ -514,7 +674,7 @@
   }
 
   function joinExistingChat() {
-    const code = prompt('Ingresa el nombre o código del chat al que te quieres unir:');
+    const code = prompt('Ingresa el nombre o código del chat:');
     if (code) {
       const cleanCode = code.replace('#', '').trim();
       if (cleanCode && !myRooms.includes(cleanCode)) {
@@ -526,7 +686,7 @@
   }
 
   function deleteRoom(roomName) {
-    if (confirm(`¿Quitar el chat #${roomName} de la lista de este celular?`)) {
+    if (confirm(`¿Quitar #${roomName} de la lista de este celular?`)) {
       myRooms = myRooms.filter(r => r !== roomName);
       saveRooms();
     }
@@ -541,8 +701,6 @@
     conversationScreen.style.display = 'flex';
 
     applySavedBackground();
-
-    // Unirse a la sala en el servidor Socket.io
     socket.emit('joinRoom', roomName);
   }
 
@@ -552,13 +710,12 @@
     conversationScreen.style.display = 'none';
     chatsListScreen.style.display = 'flex';
     bgModal.style.display = 'none';
+    cancelReply();
   }
 
-  // Service Worker
+  // Notificaciones Web Push
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('SW activo:', reg))
-      .catch(err => console.error('Error SW:', err));
+    navigator.serviceWorker.register('/sw.js').catch(err => console.error(err));
   }
 
   function urlBase64ToUint8Array(base64String) {
@@ -572,16 +729,6 @@
     return outputArray;
   }
 
-  const messageInput = document.getElementById('messageInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const imageInput = document.getElementById('imageInput');
-  const recBtn = document.getElementById('recBtn');
-  const typingLabel = document.getElementById('typingLabel');
-  const notifyBtn = document.getElementById('notifyBtn');
-
-  const notifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-
-  // Notificaciones Web Push por sala activa
   async function subscribePush() {
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !activeRoom) return;
     try {
@@ -597,26 +744,18 @@
       await fetch('/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subscription: subscription,
-          socketId: socket.id,
-          room: activeRoom
-        })
+        body: JSON.stringify({ subscription, socketId: socket.id, room: activeRoom })
       });
     } catch (err) {
-      console.error('Error Notificaciones:', err);
+      console.error(err);
     }
   }
 
   notifyBtn.addEventListener('click', async () => {
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        await subscribePush();
-        alert(`Notificaciones Push activadas para #${activeRoom}`);
-      }
-    } catch (err) {
-      console.error(err);
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      await subscribePush();
+      alert(`Notificaciones Push activadas para #${activeRoom}`);
     }
   });
 
@@ -625,12 +764,19 @@
     history.forEach(data => renderMessage(data, false));
   });
 
+  // Enviar mensaje
   function sendMessage() {
     const text = messageInput.value.trim();
     const user = nicknameInput.value.trim() || 'Anónimo';
     if (text !== '' && activeRoom) {
-      socket.emit('sendMessage', { room: activeRoom, user, message: text });
+      socket.emit('sendMessage', {
+        room: activeRoom,
+        user,
+        message: text,
+        replyTo: currentReply
+      });
       messageInput.value = '';
+      cancelReply();
     }
   }
 
@@ -642,21 +788,31 @@
     }
   });
 
+  // Enviar imágenes
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     const user = nicknameInput.value.trim() || 'Anónimo';
     if (file && activeRoom) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        socket.emit('sendMessage', { room: activeRoom, user, file: evt.target.result, fileType: 'image' });
+        socket.emit('sendMessage', {
+          room: activeRoom,
+          user,
+          file: evt.target.result,
+          fileType: 'image',
+          replyTo: currentReply
+        });
+        cancelReply();
       };
       reader.readAsDataURL(file);
     }
   });
 
+  // Lógica para Grabar Audio y Videonotas
   let mediaRecorder;
-  let audioChunks = [];
+  let recordedChunks = [];
   let isRecording = false;
+  let videoStream = null;
 
   recBtn.addEventListener('click', async () => {
     const user = nicknameInput.value.trim() || 'Anónimo';
@@ -664,25 +820,50 @@
 
     if (!isRecording) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+        let constraints = { audio: true };
+        if (recordMode === 'video') {
+          constraints.video = { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } };
+        }
 
-        mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        mediaRecorder = new MediaRecorder(stream);
+        recordedChunks = [];
+
+        if (recordMode === 'video') {
+          videoStream = stream;
+          videoPreview.srcObject = stream;
+          videoOverlay.style.display = 'block';
+        }
+
+        mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
         mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          const mimeType = recordMode === 'video' ? 'video/webm' : 'audio/webm';
+          const blob = new Blob(recordedChunks, { type: mimeType });
           const reader = new FileReader();
           reader.onload = (evt) => {
-            socket.emit('sendMessage', { room: activeRoom, user, file: evt.target.result, fileType: 'audio' });
+            socket.emit('sendMessage', {
+              room: activeRoom,
+              user,
+              file: evt.target.result,
+              fileType: recordMode,
+              replyTo: currentReply
+            });
+            cancelReply();
           };
-          reader.readAsDataURL(audioBlob);
+          reader.readAsDataURL(blob);
+
+          if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+          }
+          videoOverlay.style.display = 'none';
         };
 
         mediaRecorder.start();
         isRecording = true;
         recBtn.classList.add('recording');
       } catch (err) {
-        alert('Permiso de micrófono denegado.');
+        alert('Permiso de cámara/micrófono denegado o no disponible.');
       }
     } else {
       mediaRecorder.stop();
@@ -691,19 +872,104 @@
     }
   });
 
+  // Funciones de Citar / Editar / Eliminar
+  function setReply(user, text) {
+    currentReply = { user, text: text || 'Archivo multimedia' };
+    replyUserLabel.textContent = user;
+    replyTextLabel.textContent = currentReply.text;
+    replyPreviewBar.style.display = 'flex';
+  }
+
+  function cancelReply() {
+    currentReply = null;
+    replyPreviewBar.style.display = 'none';
+  }
+
+  function triggerEdit(messageId, oldText) {
+    const newText = prompt('Editar mensaje:', oldText);
+    if (newText !== null && newText.trim() !== '') {
+      socket.emit('editMessage', { messageId, room: activeRoom, newText: newText.trim() });
+    }
+  }
+
+  function triggerDelete(messageId) {
+    if (confirm('¿Deseas eliminar este mensaje para todos?')) {
+      socket.emit('deleteMessage', { messageId, room: activeRoom });
+    }
+  }
+
+  function toggleMenu(menuId) {
+    const menu = document.getElementById(menuId);
+    document.querySelectorAll('.msg-menu').forEach(m => {
+      if (m !== menu) m.style.display = 'none';
+    });
+    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('msg-actions-btn')) {
+      document.querySelectorAll('.msg-menu').forEach(m => m.style.display = 'none');
+    }
+  });
+
+  // Renderizar Mensajes en Pantalla
   function renderMessage(data, playAlerts = true) {
     const myName = nicknameInput.value.trim();
     const isMine = data.user === myName;
     const textContent = data.message || data.text || '';
+    const msgId = data._id;
 
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message');
+    msgDiv.id = `msg-${msgId}`;
     if (isMine) msgDiv.classList.add('mine');
 
-    let contentHtml = `<div class="sender-name">${data.user}</div>`;
-    if (textContent) contentHtml += `<span>${textContent}</span>`;
+    let contentHtml = '';
+
+    // Menú contextual para Citar, Editar y Eliminar
+    if (msgId) {
+      const menuId = `menu-${msgId}`;
+      contentHtml += `
+        <button class="msg-actions-btn" onclick="toggleMenu('${menuId}')">⋮</button>
+        <div class="msg-menu" id="${menuId}">
+          <button onclick="setReply('${data.user}', '${textContent.replace(/'/g, "\\'")}')">↩️ Responder</button>
+          ${isMine && textContent ? `<button onclick="triggerEdit('${msgId}', '${textContent.replace(/'/g, "\\'")}')">✏️ Editar</button>` : ''}
+          ${isMine ? `<button onclick="triggerDelete('${msgId}')" style="color:#ef4444;">🗑️ Borrar</button>` : ''}
+        </div>
+      `;
+    }
+
+    contentHtml += `<div class="sender-name">${data.user}</div>`;
+
+    // Visualización de Cita
+    if (data.replyTo && data.replyTo.user) {
+      contentHtml += `
+        <div class="quoted-box">
+          <div class="quoted-user">${data.replyTo.user}</div>
+          <div class="quoted-text">${data.replyTo.text}</div>
+        </div>
+      `;
+    }
+
+    // Texto y marca de editado
+    if (textContent) {
+      const editedBadge = data.isEdited ? `<span class="edited-mark">(editado)</span>` : '';
+      contentHtml += `<span class="msg-text">${textContent}</span> ${editedBadge}`;
+    }
+
+    // Archivos multimedia
     if (data.fileType === 'image') contentHtml += `<br><img src="${data.file}" alt="Imagen">`;
     if (data.fileType === 'audio') contentHtml += `<br><audio src="${data.file}" controls></audio>`;
+    
+    // Videonota Circular estilo WhatsApp
+    if (data.fileType === 'video') {
+      contentHtml += `
+        <br>
+        <div class="video-note-container">
+          <video src="${data.file}" controls autoplay loop muted playsinline></video>
+        </div>
+      `;
+    }
     
     const checkmark = isMine ? ' <span style="color:#53bdeb;">✓✓</span>' : '';
     contentHtml += `<div class="time">${data.time}${checkmark}</div>`;
@@ -717,10 +983,31 @@
     }
   }
 
+  // Socket Events
   socket.on('newMessage', (data) => {
     if (data.room === activeRoom) {
       renderMessage(data, true);
     }
+  });
+
+  socket.on('messageEdited', (data) => {
+    const msgElement = document.getElementById(`msg-${data.messageId}`);
+    if (msgElement) {
+      const textSpan = msgElement.querySelector('.msg-text');
+      if (textSpan) textSpan.textContent = data.newText;
+      if (!msgElement.querySelector('.edited-mark')) {
+        const timeDiv = msgElement.querySelector('.time');
+        const editedSpan = document.createElement('span');
+        editedSpan.classList.add('edited-mark');
+        editedSpan.textContent = '(editado)';
+        timeDiv.parentNode.insertBefore(editedSpan, timeDiv);
+      }
+    }
+  });
+
+  socket.on('messageDeleted', (data) => {
+    const msgElement = document.getElementById(`msg-${data.messageId}`);
+    if (msgElement) msgElement.remove();
   });
 
   let typingTimeout;
