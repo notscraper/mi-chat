@@ -533,7 +533,7 @@
     </div>
 
     <div class="video-recording-overlay" id="videoOverlay">
-      <video id="videoPreview" autoplay playsinline muted></video>
+      <video id="videoPreview" autoplay playsinline muted webkit-playsinline></video>
     </div>
 
     <div class="bg-modal" id="bgModal">
@@ -784,6 +784,10 @@
     socket.emit('markAsRead', { room: activeRoom, user: nicknameInput.value.trim() });
   });
 
+  socket.on('newMessage', (data) => {
+    renderMessage(data, true);
+  });
+
   function sendMessage() {
     const text = messageInput.value.trim();
     const user = nicknameInput.value.trim() || 'Anónimo';
@@ -860,6 +864,7 @@
   let isRecording = false;
   let videoStream = null;
 
+  // --- GRABACIÓN Y SOPORTE DE MEDIA COMPATIBLE CON IOS (IPHONE) ---
   recBtn.addEventListener('click', async () => {
     const user = nicknameInput.value.trim() || 'Anónimo';
     if (!activeRoom) return;
@@ -872,7 +877,31 @@
         }
 
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        mediaRecorder = new MediaRecorder(stream);
+        
+        // Selección dinámica de mimeType para iOS Safari y Android/Chrome
+        let mimeType = recordMode === 'video' ? 'video/mp4' : 'audio/mp4';
+        if (recordMode === 'video') {
+          if (!MediaRecorder.isTypeSupported('video/mp4')) {
+            if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+              mimeType = 'video/webm;codecs=vp9';
+            } else if (MediaRecorder.isTypeSupported('video/webm')) {
+              mimeType = 'video/webm';
+            } else {
+              mimeType = '';
+            }
+          }
+        } else {
+          if (!MediaRecorder.isTypeSupported('audio/mp4')) {
+            if (MediaRecorder.isTypeSupported('audio/webm')) {
+              mimeType = 'audio/webm';
+            } else {
+              mimeType = '';
+            }
+          }
+        }
+
+        const options = mimeType ? { mimeType } : {};
+        mediaRecorder = new MediaRecorder(stream, options);
         recordedChunks = [];
 
         if (recordMode === 'video') {
@@ -886,8 +915,7 @@
         };
 
         mediaRecorder.onstop = () => {
-          const mimeType = recordMode === 'video' ? 'video/webm' : 'audio/webm';
-          const blob = new Blob(recordedChunks, { type: mimeType });
+          const blob = new Blob(recordedChunks, { type: mimeType || (recordMode === 'video' ? 'video/mp4' : 'audio/mp4') });
           const reader = new FileReader();
           reader.onload = (evt) => {
             socket.emit('sendMessage', {
@@ -1042,7 +1070,7 @@
       contentHtml += `
         <br>
         <div class="video-note-container">
-          <video src="${mediaSrc}" controls autoplay loop muted playsinline></video>
+          <video src="${mediaSrc}" controls autoplay loop muted playsinline webkit-playsinline preload="metadata"></video>
         </div>
       `;
     }
@@ -1075,70 +1103,15 @@
 
     if (playAlerts && !isMine) {
       notifySound.play().catch(() => {});
-      socket.emit('markAsRead', { room: activeRoom, user: nicknameInput.value.trim() });
+      socket.emit('markAsRead', { room: activeRoom, user: myName });
     }
   }
 
-  socket.on('newMessage', (data) => {
-    if (data.room === activeRoom) {
-      renderMessage(data, true);
-    }
-  });
-
-  socket.on('messagesRead', () => {
-    document.querySelectorAll('.check-mark').forEach(chk => chk.classList.add('read'));
-  });
-
-  socket.on('reactionUpdated', ({ messageId, reactions }) => {
-    const msgElement = document.getElementById(`msg-${messageId}`);
-    if (msgElement) {
-      let badge = msgElement.querySelector('.reactions-bar-badge');
-      const emojiValues = Object.values(reactions);
-      
-      if (emojiValues.length > 0) {
-        const text = `${Array.from(new Set(emojiValues)).join('')} ${emojiValues.length}`;
-        if (!badge) {
-          badge = document.createElement('div');
-          badge.className = 'reactions-bar-badge';
-          badge.id = `react-badge-${messageId}`;
-          msgElement.appendChild(badge);
-        }
-        badge.textContent = text;
-      } else if (badge) {
-        badge.remove();
-      }
-    }
-  });
-
-  socket.on('messageEdited', (data) => {
-    const msgElement = document.getElementById(`msg-${data.messageId}`);
-    if (msgElement) {
-      const textSpan = msgElement.querySelector('.msg-text');
-      if (textSpan) textSpan.textContent = data.newText;
-      if (!msgElement.querySelector('.edited-mark')) {
-        const timeDiv = msgElement.querySelector('.time');
-        const editedSpan = document.createElement('span');
-        editedSpan.classList.add('edited-mark');
-        editedSpan.textContent = '(editado)';
-        timeDiv.parentNode.insertBefore(editedSpan, timeDiv);
-      }
-    }
-  });
-
-  socket.on('messageDeleted', (data) => {
-    const msgElement = document.getElementById(`msg-${data.messageId}`);
-    if (msgElement) msgElement.remove();
-  });
-
-  let typingTimeout;
-  socket.on('userTyping', (user) => {
-    typingLabel.textContent = `${user} está escribiendo...`;
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => { typingLabel.textContent = ''; }, 2000);
-  });
-
+  // Inicialización
   renderChatsList();
-  applySavedBackground();
+  if (initialHash) {
+    openChat(initialHash);
+  }
 </script>
 </body>
 </html>
