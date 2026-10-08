@@ -623,7 +623,7 @@
     }
   });
 
-  // 1. BUSCADOR EN EL CHAT
+  // BUSCADOR EN EL CHAT
   searchBtn.addEventListener('click', () => {
     searchContainer.style.display = searchContainer.style.display === 'block' ? 'none' : 'block';
     if (searchContainer.style.display === 'block') searchInput.focus();
@@ -772,7 +772,7 @@
     cancelReply();
   }
 
-  // 2. PRESENCIA EN LÍNEA
+  // PRESENCIA EN LÍNEA
   socket.on('onlineStatus', (users) => {
     const count = users.length;
     onlineLabel.textContent = count > 1 ? `${count} personas en línea` : 'En línea';
@@ -811,7 +811,7 @@
     }
   });
 
-  // 3. COMPRESIÓN LIGERA DE FOTOS ANTES DE ENVIAR (CANVAS)
+  // COMPRESIÓN LIGERA DE FOTOS ANTES DE ENVIAR (CANVAS)
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     const user = nicknameInput.value.trim() || 'Anónimo';
@@ -864,7 +864,7 @@
   let isRecording = false;
   let videoStream = null;
 
-  // --- GRABACIÓN Y SOPORTE DE MEDIA COMPATIBLE CON IOS (IPHONE) ---
+  // GRABACIÓN Y SOPORTE DE MEDIA COMPATIBLE CON IOS (IPHONE)
   recBtn.addEventListener('click', async () => {
     const user = nicknameInput.value.trim() || 'Anónimo';
     if (!activeRoom) return;
@@ -878,7 +878,6 @@
 
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         
-        // Selección dinámica de mimeType para iOS Safari y Android/Chrome
         let mimeType = recordMode === 'video' ? 'video/mp4' : 'audio/mp4';
         if (recordMode === 'video') {
           if (!MediaRecorder.isTypeSupported('video/mp4')) {
@@ -974,7 +973,7 @@
     }
   }
 
-  // 4. REACCIONES RÁPIDAS
+  // REACCIONES RÁPIDAS
   function sendReaction(messageId, emoji) {
     const user = nicknameInput.value.trim();
     socket.emit('toggleReaction', { messageId, room: activeRoom, user, emoji });
@@ -1037,7 +1036,7 @@
           <button onclick="toggleReactionsPopup('${popupId}')">😍 Reaccionar</button>
           <button onclick="setReply('${data.user}', '${textContent.replace(/'/g, "\\'")}')">↩️ Responder</button>
           ${isMine && textContent ? `<button onclick="triggerEdit('${msgId}', '${textContent.replace(/'/g, "\\'")}')">✏️ Editar</button>` : ''}
-          ${isMine ? `<button onclick="triggerDelete('${msgId}')" style="color:#ef4444;">🗑️ Borrar</button>` : ''}
+          ${isMine ? `<button onclick="triggerDelete('\${msgId}')" style="color:#ef4444;">🗑️ Borrar</button>` : ''}
         </div>
       `;
     }
@@ -1086,8 +1085,20 @@
     }
     contentHtml += reactionsList;
     
-    // 5. DOBLE CHECK AZUL / GRIS
-    const timeDisplay = data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // FORMATO AUTOMÁTICO DE HORA LOCAL (America/Monterrey / UTC-6)
+    let dateObj = data.createdAt ? new Date(data.createdAt) : new Date();
+    if (isNaN(dateObj.getTime())) {
+      dateObj = new Date();
+    }
+
+    const timeDisplay = dateObj.toLocaleTimeString('es-MX', {
+      timeZone: 'America/Monterrey',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    // DOBLE CHECK AZUL / GRIS
     let checkmark = '';
     if (isMine) {
       const isRead = data.readBy && data.readBy.length > 1;
