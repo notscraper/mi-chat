@@ -432,6 +432,25 @@
     }
     .video-recording-overlay video { width: 100%; height: 100%; object-fit: cover; }
 
+    .btn-switch-camera {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.6);
+      color: #fff;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      z-index: 35;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
     .input-area {
       padding: 8px 12px;
       background: #f0f2f5;
@@ -534,6 +553,7 @@
 
     <div class="video-recording-overlay" id="videoOverlay">
       <video id="videoPreview" autoplay playsinline muted webkit-playsinline></video>
+      <button class="btn-switch-camera" id="switchCameraBtn" title="Voltear Cámara">🔄</button>
     </div>
 
     <div class="bg-modal" id="bgModal">
@@ -590,6 +610,7 @@
   const toggleModeBtn = document.getElementById('toggleModeBtn');
   const videoOverlay = document.getElementById('videoOverlay');
   const videoPreview = document.getElementById('videoPreview');
+  const switchCameraBtn = document.getElementById('switchCameraBtn');
   const replyPreviewBar = document.getElementById('replyPreviewBar');
   const replyUserLabel = document.getElementById('replyUserLabel');
   const replyTextLabel = document.getElementById('replyTextLabel');
@@ -610,6 +631,7 @@
   let activeRoom = '';
   let currentReply = null;
   let recordMode = 'audio';
+  let cameraFacingMode = 'user'; // 'user' (frontal) o 'environment' (trasera)
 
   toggleModeBtn.addEventListener('click', () => {
     if (recordMode === 'audio') {
@@ -864,20 +886,73 @@
   let isRecording = false;
   let videoStream = null;
 
-  // GRABACIÓN Y SOPORTE DE MEDIA COMPATIBLE CON IOS (IPHONE)
+  // FUNCIÓN PARA OBTENER MEDIA STREAM DE LA CÁMARA
+  async function getMediaStream() {
+    let constraints = { audio: true };
+    if (recordMode === 'video') {
+      constraints.video = { 
+        facingMode: { exact: cameraFacingMode }, 
+        width: { ideal: 480 }, 
+        height: { ideal: 480 } 
+      };
+    }
+
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err) {
+      // Fallback si la sintaxis 'exact' falla en algunos navegadores móviles
+      if (recordMode === 'video') {
+        constraints.video = { 
+          facingMode: cameraFacingMode, 
+          width: { ideal: 480 }, 
+          height: { ideal: 480 } 
+        };
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      }
+      throw err;
+    }
+  }
+
+  // CAMBIAR/VOLTEAR CÁMARA DURANTE O ANTES DE GRABAR
+  switchCameraBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    cameraFacingMode = (cameraFacingMode === 'user') ? 'environment' : 'user';
+
+    if (isRecording && recordMode === 'video') {
+      try {
+        // Detener los tracks de video actuales
+        if (videoStream) {
+          videoStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Obtener el nuevo stream con la otra cámara
+        videoStream = await getMediaStream();
+        videoPreview.srcObject = videoStream;
+
+        // Si la grabadora admite cambiar el track en caliente sin cortar el archivo
+        const newVideoTrack = videoStream.getVideoTracks()[0];
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          const videoSender = mediaRecorder.stream ? mediaRecorder.stream.getVideoTracks()[0] : null;
+          if (videoSender && mediaRecorder.stream.removeTrack) {
+            mediaRecorder.stream.removeTrack(videoSender);
+            mediaRecorder.stream.addTrack(newVideoTrack);
+          }
+        }
+      } catch (err) {
+        alert('No se pudo cambiar la cámara en este dispositivo.');
+      }
+    }
+  });
+
+  // GRABACIÓN Y SOPORTE DE MEDIA COMPATIBLE CON IOS (IPHONE) Y CAMBIO DE CÁMARA
   recBtn.addEventListener('click', async () => {
     const user = nicknameInput.value.trim() || 'Anónimo';
     if (!activeRoom) return;
 
     if (!isRecording) {
       try {
-        let constraints = { audio: true };
-        if (recordMode === 'video') {
-          constraints.video = { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } };
-        }
+        videoStream = await getMediaStream();
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        
         let mimeType = recordMode === 'video' ? 'video/mp4' : 'audio/mp4';
         if (recordMode === 'video') {
           if (!MediaRecorder.isTypeSupported('video/mp4')) {
@@ -900,12 +975,11 @@
         }
 
         const options = mimeType ? { mimeType } : {};
-        mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorder = new MediaRecorder(videoStream, options);
         recordedChunks = [];
 
         if (recordMode === 'video') {
-          videoStream = stream;
-          videoPreview.srcObject = stream;
+          videoPreview.srcObject = videoStream;
           videoOverlay.style.display = 'block';
         }
 
